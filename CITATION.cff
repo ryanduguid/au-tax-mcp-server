@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: If you cite this software, use the metadata below.
+authors:
+  - family-names: Duguid
+    given-names: Ryan
+title: "JohnKenley (aus-accounting-mcp)"
+abstract: Local MCP facade over reviewed Australian computational accounting engines. Citations and refusals, not advice.
+version: 0.1.0
+date-released: 2026-08-21
+url: "https://github.com/ryanduguid/JohnKenley"
+repository-code: "https://github.com/ryanduguid/JohnKenley"
+license: MIT
+keywords:
+  - mcp
+  - australian-tax
+  - ato-benchmarks
+  - payday-super
