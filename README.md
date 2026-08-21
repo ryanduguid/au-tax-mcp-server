@@ -1,4 +1,3 @@
-Local MCP server for Australian computational accounting: ATO small-business benchmarks, Payday Super 2026 review, refused Division 7A, and synthetic SBR fixtures. Citations and refusals, not advice.
 # JohnKenley
 
 [![tests](https://github.com/ryanduguid/JohnKenley/actions/workflows/ci.yml/badge.svg)](https://github.com/ryanduguid/JohnKenley/actions/workflows/ci.yml)
