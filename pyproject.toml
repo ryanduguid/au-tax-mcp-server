@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "aus-accounting-mcp"
 version = "0.1.0"
-description = "Unified Model Context Protocol (MCP) server for Australian computational accounting, ATO benchmarks, Payday Super, and Division 7A."
+description = "MCP facade over payday-super-checker and ato-benchmark-compare for Australian computational accounting."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -18,12 +18,12 @@ keywords = [
     "australian-tax",
     "ato-benchmarks",
     "payday-super",
-    "division-7a",
     "accounting-ai",
 ]
 dependencies = [
-    "mcp>=1.0.0",
-    "pydantic>=2.0.0",
+    "mcp>=2.0.0,<3",
+    "payday-super-checker @ git+https://github.com/ryanduguid/payday-super-checker.git@4e60756de85cb0d06aa9c5ca2c4193b72a5802a3",
+    "ato-benchmark-compare @ git+https://github.com/ryanduguid/RaymondChambers.git@64e165378d1cebb55d611f3675894c0630120f34",
 ]
 
 [project.optional-dependencies]
@@ -34,6 +34,13 @@ dev = [
 
 [project.scripts]
 aus-accounting-mcp = "aus_accounting_mcp.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ryanduguid/aus-accounting-mcp"
+Repository = "https://github.com/ryanduguid/aus-accounting-mcp.git"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["aus_accounting_mcp"]

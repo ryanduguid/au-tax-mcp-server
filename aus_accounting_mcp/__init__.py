@@ -1,6 +1,4 @@
-"""
-aus-accounting-mcp: Unified Australian Accounting & Tax MCP Server
-"""
+"""aus-accounting-mcp: MCP facade over reviewed Australian accounting engines."""
 
 __version__ = "0.1.0"
 __author__ = "Ryan Duguid"
