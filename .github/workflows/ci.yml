@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -12,6 +16,7 @@ jobs:
   test:
     permissions:
       contents: read
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
