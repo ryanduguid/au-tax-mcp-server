@@ -9,7 +9,7 @@ allocation cannot be confirmed through this facade.
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Any
 
 from paydaysuper import LAW_CONTENT_DATE, __version__ as PAYDAY_VERSION
@@ -17,6 +17,8 @@ from paydaysuper.calendar import load_calendar
 from paydaysuper.deadlines import ContribLine, PreRegimeError
 from paydaysuper.rates import load_gic
 from paydaysuper.report import Result, assess
+
+from aus_accounting_mcp.money import parse_amount
 
 DISCLAIMER = (
     "Experimental review aid. Not a compliance determination, an ATO assessment "
@@ -50,16 +52,7 @@ def _optional_date(value: str | None, field: str) -> date | None:
 
 
 def _required_amount(value: str, field: str) -> Decimal:
-    text = str(value).strip()
-    if not text:
-        raise ValueError(f"{field} is required")
-    try:
-        amount = Decimal(text)
-    except InvalidOperation as exc:
-        raise ValueError(f"{field}: {value!r} is not a decimal amount") from exc
-    if not amount.is_finite():
-        raise ValueError(f"{field}: {value!r} is not a finite amount")
-    return amount
+    return parse_amount(value, field)
 
 
 def _money(value: Decimal | None) -> str | None:

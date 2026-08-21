@@ -6,7 +6,7 @@ Division 7A is refused until a reviewed engine exists. SBR payloads are syntheti
 
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Any
 
 from mcp.server.mcpserver import MCPServer
@@ -17,6 +17,7 @@ from .fixtures.synthetic_sbr import (
     generate_synthetic_bas_payload,
     generate_synthetic_ctr_payload,
 )
+from .money import parse_amount
 
 mcp = MCPServer("aus-accounting-mcp")
 
@@ -124,7 +125,8 @@ def calc_div7a_repayment(
     is_secured_25_year: bool = False,
 ) -> dict[str, Any]:
     """Refuse Division 7A calculations. No reviewed engine is wired."""
-    del borrower_name, lender_entity_name, loan_principal, start_fy, is_secured_25_year
+    parse_amount(loan_principal, "loan_principal")
+    del borrower_name, lender_entity_name, start_fy, is_secured_25_year
     return {
         "ok": False,
         "available": False,
@@ -140,14 +142,7 @@ def generate_synthetic_sbr_fixture(
     revenue_or_sales: str = "1000000.00",
 ) -> dict[str, Any]:
     """Generate a synthetic CTR or BAS fixture. Not a lodgment and not statutory advice."""
-    try:
-        amount = Decimal(str(revenue_or_sales).strip())
-    except InvalidOperation as exc:
-        raise ValueError(
-            f"revenue_or_sales: {revenue_or_sales!r} is not a decimal amount"
-        ) from exc
-    if not amount.is_finite():
-        raise ValueError(f"revenue_or_sales: {revenue_or_sales!r} is not a finite amount")
+    amount = parse_amount(revenue_or_sales, "revenue_or_sales")
     kind = form_type.strip().upper()
     if kind == "CTR":
         return generate_synthetic_ctr_payload(

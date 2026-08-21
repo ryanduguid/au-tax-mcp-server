@@ -7,7 +7,7 @@ Omitted buckets are not treated as evidenced zeros.
 
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Any
 
 from atobenchmark import __version__ as BENCHMARK_VERSION
@@ -15,6 +15,8 @@ from atobenchmark.dataset import DatasetError, load
 from atobenchmark.mapping import BUCKETS
 from atobenchmark.ratios import RatioError, compute
 from atobenchmark.report import DISCLAIMER, compare, to_dict
+
+from aus_accounting_mcp.money import parse_amount, parse_optional_amount
 
 EXPENSE_FIELDS = (
     "cost_of_sales",
@@ -42,25 +44,11 @@ RATIO_SOURCES: dict[str, tuple[str, ...]] = {
 
 
 def _optional_amount(value: str | None, field: str) -> Decimal | None:
-    if value is None:
-        return None
-    text = str(value).strip()
-    if text == "":
-        return None
-    try:
-        amount = Decimal(text)
-    except InvalidOperation as exc:
-        raise ValueError(f"{field}: {value!r} is not a decimal amount") from exc
-    if not amount.is_finite():
-        raise ValueError(f"{field}: {value!r} is not a finite amount")
-    return amount
+    return parse_optional_amount(value, field)
 
 
 def _required_amount(value: str, field: str) -> Decimal:
-    amount = _optional_amount(value, field)
-    if amount is None:
-        raise ValueError(f"{field} is required")
-    return amount
+    return parse_amount(value, field)
 
 
 def list_industries(search: str | None = None, year: str | None = None) -> dict[str, Any]:

@@ -23,7 +23,7 @@ Division 7A is **refused** until a reviewed engine exists. SBR payloads are **sy
 | `calc_div7a_repayment` | none | Returns a refusal. No reviewed Div 7A engine is wired |
 | `generate_synthetic_sbr_fixture` | local fixture | Synthetic CTR/BAS for agent tests (`synthetic: true`) |
 
-Amounts are decimal strings. Dates are ISO-8601. payday-super-checker marks `UNKNOWN` or refuses where the facts do not establish the statutory test. A remittance date alone cannot produce `ON_TIME`. Omitted ATO expense buckets are `not_supplied`, not zero.
+Amounts are decimal strings, finite, at most two decimal places, and no greater than AUD 1,000,000,000,000.00. Dates are ISO-8601. Payday Super uses payday-super-checker's national SGAA 1992 s 6(1) calendar. The checker marks `UNKNOWN` or refuses where the facts do not establish the statutory test. A remittance date alone cannot produce `ON_TIME`. Omitted ATO expense buckets are `not_supplied`, not zero.
 
 ## Install
 
