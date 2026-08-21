@@ -1,88 +1,151 @@
-from datetime import date
-from decimal import Decimal
-from aus_accounting_mcp.engines.div7a import generate_div7a_schedule, calculate_div7a_myr, generate_dividend_offset_journal
-from aus_accounting_mcp.engines.paydaysuper_sim import simulate_payday_super, ClearingHouseType
-from aus_accounting_mcp.engines.benchmarks import analyze_ato_benchmarks
-from aus_accounting_mcp.engines.synthetic_sbr import generate_synthetic_ctr_payload, generate_synthetic_bas_payload
-from aus_accounting_mcp.server import get_ato_benchmarks, calc_payday_super_deadline, calc_div7a_repayment, generate_synthetic_sbr_fixture
+import importlib
 
-def test_div7a_amortisation_7year():
-    # $100k loan at FY2025 benchmark rate (8.77%)
-    sched = generate_div7a_schedule(
-        borrower_name="John Doe",
-        lender_entity_name="Acme Pty Ltd",
-        principal=Decimal("100000.00"),
-        start_financial_year=2025,
-        is_secured_25_year=False,
+import pytest
+
+from aus_accounting_mcp.server import (
+    calc_div7a_repayment,
+    calc_payday_super_deadline,
+    generate_synthetic_sbr_fixture,
+    get_ato_benchmarks,
+    list_ato_benchmark_industries,
+)
+
+
+def test_inlined_simulators_are_gone() -> None:
+    for name in (
+        "aus_accounting_mcp.engines.paydaysuper_sim",
+        "aus_accounting_mcp.engines.benchmarks",
+        "aus_accounting_mcp.engines.div7a",
+    ):
+        with pytest.raises(ModuleNotFoundError):
+            importlib.import_module(name)
+
+
+def test_payday_on_time_uses_payday_super_checker() -> None:
+    payload = calc_payday_super_deadline(
+        qe_day="2026-08-06",
+        sg_amount="800.00",
+        remitted="2026-08-07",
+        received="2026-08-10",
+        as_at="2026-08-21",
     )
-    assert sched.loan_term_years == 7
-    assert len(sched.schedule) == 7
-    first_year = sched.schedule[0]
-    assert first_year.benchmark_interest_rate == Decimal("0.0877")
-    assert first_year.interest_charge == Decimal("8770.00")
-    assert first_year.minimum_yearly_repayment > Decimal("19000.00")
-    # Final year closing balance is 0
-    assert sched.schedule[-1].closing_balance == Decimal("0.00")
+    assert payload["ok"] is True
+    assert payload["engine"] == "payday-super-checker"
+    assert payload["law_content_date"] == "2026-08-15"
+    assert payload["result"]["verdict"] == "ON_TIME"
+    assert payload["result"]["experimental_sgc_high"] is None
+    assert "clearing-house latency" in payload["disclaimer"]
 
-def test_dividend_offset_journal():
-    journals = generate_dividend_offset_journal(
-        borrower_name="John Doe",
-        lender_entity_name="Acme Pty Ltd",
-        offset_amount=Decimal("20000.00"),
-        corporate_tax_rate=Decimal("0.25"),
+
+def test_payday_without_fund_receipt_is_at_risk() -> None:
+    payload = calc_payday_super_deadline(
+        qe_day="2026-08-06",
+        sg_amount="800.00",
+        remitted="2026-08-07",
+        as_at="2026-08-21",
     )
-    assert len(journals) == 3
-    # Franking debit is 20000 * (0.25 / 0.75) = 6666.67
-    assert "$6,666.67" in journals[2]["debit"]
+    assert payload["result"]["verdict"] == "AT_RISK"
+    assert any("receipt by the fund" in c for c in payload["result"]["caveats"])
 
-def test_payday_super_simulation():
-    # Compliant scenario: Commercial clearing house submitted on payday
-    comp_res = simulate_payday_super(
-        pay_date=date(2026, 7, 7),        # Tuesday
-        submission_date=date(2026, 7, 7), # Tuesday
-        sg_contribution=Decimal("1150.00"),
-        clearing_house_type=ClearingHouseType.COMMERCIAL, # +2 business days -> Thursday 9 July
+
+def test_payday_pre_regime_is_refused() -> None:
+    with pytest.raises(ValueError, match="1 Jul 2026"):
+        calc_payday_super_deadline(
+            qe_day="2026-06-15",
+            sg_amount="800.00",
+            received="2026-06-20",
+            as_at="2026-08-21",
+        )
+
+
+def test_payday_transition_period_cannot_be_confirmed_by_the_mcp() -> None:
+    with pytest.raises(ValueError, match="this MCP cannot confirm"):
+        calc_payday_super_deadline(
+            qe_day="2026-07-09",
+            sg_amount="800.00",
+            received="2026-07-15",
+            as_at="2026-08-10",
+        )
+
+
+def test_payday_rejects_non_decimal_amounts() -> None:
+    with pytest.raises(ValueError, match="sg_amount"):
+        calc_payday_super_deadline(
+            qe_day="2026-08-06",
+            sg_amount="nope",
+            received="2026-08-10",
+            as_at="2026-08-21",
+        )
+
+
+def test_ato_benchmarks_use_shipped_dataset() -> None:
+    listed = list_ato_benchmark_industries(search="baker")
+    assert listed["ok"] is True
+    assert listed["engine"] == "ato-benchmark-compare"
+    assert any(item["name"] == "Bakeries and hot bread shops" for item in listed["industries"])
+
+    payload = get_ato_benchmarks(
+        industry="Bakeries and hot bread shops",
+        turnover="850000.00",
+        cost_of_sales="270000.00",
+        cost_of_sales_labour="0",
+        other_expense="437000.00",
+        salary_wages="120000.00",
+        contractor_commission="0",
+        rent="40000.00",
+        motor_vehicle="8000.00",
+        associated_persons="0",
+        w1="120000.00",
     )
-    assert comp_res.is_compliant is True
-    assert comp_res.total_sgc_exposure == Decimal("0.00")
+    assert payload["ok"] is True
+    assert payload["business_type"] == "Bakeries and hot bread shops"
+    assert payload["complete_buckets"] is True
+    assert payload["source"]["publisher"]
+    statuses = {row["ratio"]: row["status"] for row in payload["ratios"]}
+    assert statuses["cost_of_sales_to_turnover"] == "within"
 
-    # Non-compliant scenario: Submitted late via SBSCH (+5 business days)
-    late_res = simulate_payday_super(
-        pay_date=date(2026, 7, 7),         # Tuesday
-        submission_date=date(2026, 7, 15), # 6 business days later
-        sg_contribution=Decimal("1150.00"),
-        clearing_house_type=ClearingHouseType.SBSCH, # +5 days -> well past 7-day statutory window
+
+def test_ato_omitted_buckets_are_not_treated_as_zero() -> None:
+    payload = get_ato_benchmarks(
+        industry="Bakeries and hot bread shops",
+        turnover="850000.00",
+        cost_of_sales="270000.00",
     )
-    assert late_res.is_compliant is False
-    assert late_res.total_sgc_exposure > Decimal("1150.00")
+    statuses = {row["ratio"]: row["status"] for row in payload["ratios"]}
+    assert statuses["cost_of_sales_to_turnover"] == "within"
+    assert statuses["rent_to_turnover"] == "not_supplied"
+    assert statuses["total_expenses_to_turnover"] == "not_supplied"
+    assert "rent" in payload["omitted_buckets"]
+    assert payload["complete_buckets"] is False
 
-def test_ato_benchmarks_analysis():
-    # Cafe with turnover $1M, cost of sales $300k (30% within 28-37% range)
-    res = analyze_ato_benchmarks(
-        industry_key="cafes_and_restaurants",
-        annual_turnover=Decimal("1000000.00"),
-        cost_of_sales=Decimal("300000.00"),
-        labour_expenses=Decimal("290000.00"),
-    )
-    assert res.overall_audit_risk == "LOW"
-    assert len(res.metrics_evaluated) == 2
-    assert res.metrics_evaluated[0].status == "WITHIN_RANGE"
 
-def test_synthetic_sbr_fixtures():
-    ctr = generate_synthetic_ctr_payload(gross_revenue=Decimal("1000000.00"))
+def test_ato_refuses_turnover_only() -> None:
+    with pytest.raises(ValueError, match="no expense figures"):
+        get_ato_benchmarks(industry="Bakeries and hot bread shops", turnover="850000.00")
+
+
+def test_ato_unknown_industry_is_refused() -> None:
+    with pytest.raises(ValueError, match="no ATO business type"):
+        get_ato_benchmarks(
+            industry="interstellar freight",
+            turnover="100000.00",
+            cost_of_sales="0",
+        )
+
+
+def test_div7a_is_refused() -> None:
+    payload = calc_div7a_repayment("Alice", "HoldingCo Pty Ltd", "50000.00")
+    assert payload["available"] is False
+    assert payload["reviewed_engine"] is False
+    assert "payday-super-checker" in payload["reason"]
+
+
+def test_synthetic_sbr_fixtures_are_labelled() -> None:
+    ctr = generate_synthetic_sbr_fixture("CTR", revenue_or_sales="1000000.00")
+    assert ctr["synthetic"] is True
+    assert ctr["not_a_lodgment"] is True
     assert ctr["form_type"] == "CTR_AU_2025"
-    assert ctr["income_statement"]["gross_profit"] == 600000.0
+    assert ctr["income_statement"]["gross_profit"] == "600000.00"
 
-    bas = generate_synthetic_bas_payload(total_sales_g1=Decimal("110000.00"))
-    assert bas["gst_labels"]["1A_gst_on_sales"] == 10000.0
-
-def test_mcp_tool_functions():
-    bm_tool = get_ato_benchmarks("cafes_and_restaurants", 500000.0, cost_of_sales=150000.0)
-    assert bm_tool["industry"] == "cafes_and_restaurants"
-
-    pds_tool = calc_payday_super_deadline("2026-07-07", "2026-07-07", 1000.0)
-    assert pds_tool["is_compliant"] is True
-
-    div7a_tool = calc_div7a_repayment("Alice", "HoldingCo Pty Ltd", 50000.0)
-    assert div7a_tool["principal"] == 50000.0
-    assert len(div7a_tool["schedule"]) == 7
+    bas = generate_synthetic_sbr_fixture("BAS", revenue_or_sales="110000.00")
+    assert bas["gst_labels"]["1A_gst_on_sales"] == "10000.00"

@@ -4,41 +4,47 @@
 [![Model Context Protocol](https://img.shields.io/badge/MCP-Standard%20Protocol-8A2BE2)](https://modelcontextprotocol.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Unified Model Context Protocol (MCP) server for Australian computational accounting, ATO small business benchmarks, Payday Super 2026, and Division 7A.**
+MCP facade over reviewed Australian computational accounting engines. Compatible with Claude Desktop, Claude Code, Cursor and Antigravity.
 
-Compatible with **Claude Desktop, Claude Code, Cursor, Antigravity, and OpenAccountants**.
+This server does **not** reimplement tax law. Payday Super and ATO small-business benchmarks are delegated to:
 
----
+- [payday-super-checker](https://github.com/ryanduguid/payday-super-checker) (`paydaysuper`)
+- [RaymondChambers](https://github.com/ryanduguid/RaymondChambers) (`ato-benchmark-compare`)
 
-## 🛠️ Provided MCP Tools
+Division 7A is **refused** until a reviewed engine exists. SBR payloads are **synthetic fixtures**, not lodgments.
 
-| Tool Name | Description | Key Statutory Reference |
+## Tools
+
+| Tool | Engine | What it does |
 | :--- | :--- | :--- |
-| `get_ato_benchmarks` | Queries ATO small business benchmarks and performs variance analysis on expense ratios. | ATO Small Business Benchmarks |
-| `calc_payday_super_deadline` | Evaluates Payday Super 7 business day compliance window and simulates clearing house latency and SGC liability. | Payday Super (1 July 2026) / SGAA 1992 |
-| `calc_div7a_repayment` | Calculates s 109N Minimum Yearly Repayment (MYR), amortisation schedule, and franked dividend offset journals. | Division 7A ITAA 1936 |
-| `generate_synthetic_sbr_fixture` | Generates synthetic, zero-network, privacy-safe ATO SBR payloads (CTR and BAS) for testing AI agents. | Standard Business Reporting (SBR) |
+| `list_ato_benchmark_industries` | ato-benchmark-compare | List or search the shipped ATO business types |
+| `get_ato_benchmarks` | ato-benchmark-compare | Compare operator-supplied bucket totals to ATO ranges |
+| `calc_payday_super_deadline` | payday-super-checker | Review one contribution; `as_at` is required; does not invent clearing-house latency; cannot confirm LCR 2026/1 transition allocation |
+| `calc_div7a_repayment` | none | Returns a refusal. No reviewed Div 7A engine is wired |
+| `generate_synthetic_sbr_fixture` | local fixture | Synthetic CTR/BAS for agent tests (`synthetic: true`) |
 
----
+Amounts are decimal strings. Dates are ISO-8601. payday-super-checker marks `UNKNOWN` or refuses where the facts do not establish the statutory test. A remittance date alone cannot produce `ON_TIME`. Omitted ATO expense buckets are `not_supplied`, not zero.
 
-## ⚡ Installation & Quickstart
+## Install
 
-### 1. Install via pip
+Python 3.10+. The engines are installed from GitHub because they are not on PyPI.
+
 ```bash
+git clone https://github.com/ryanduguid/aus-accounting-mcp.git
+cd aus-accounting-mcp
 pip install .
 ```
 
-### 2. Run MCP Server (stdio transport)
 ```bash
 aus-accounting-mcp
 ```
 
----
-
-## 🔌 Client Integration
+## Client integration
 
 ### Claude Desktop
-Add to your `claude_desktop_config.json` (`%APPDATA%\Claude\claude_desktop_config.json`):
+
+`%APPDATA%\Claude\claude_desktop_config.json`:
+
 ```json
 {
   "mcpServers": {
@@ -50,7 +56,9 @@ Add to your `claude_desktop_config.json` (`%APPDATA%\Claude\claude_desktop_confi
 ```
 
 ### Cursor
-Add to `.cursor/mcp.json`:
+
+`.cursor/mcp.json`:
+
 ```json
 {
   "mcpServers": {
@@ -62,11 +70,11 @@ Add to `.cursor/mcp.json`:
 ```
 
 ### Claude Code
+
 ```bash
 claude mcp add aus-accounting -- aus-accounting-mcp
 ```
 
----
+## License
 
-## ⚖️ License
 MIT License. Created by Ryan Duguid.
