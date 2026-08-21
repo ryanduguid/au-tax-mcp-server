@@ -11,7 +11,7 @@ _MONETARY_ENDPOINT_FIELDS = [
     ("get_ato_benchmarks", "turnover"),
     ("get_ato_benchmarks", "cost_of_sales"),
     ("calc_payday_super_deadline", "sg_amount"),
-    ("calc_div7a_repayment", "loan_principal"),
+    ("refuse_div7a", "loan_principal"),
     ("generate_synthetic_sbr_fixture", "revenue_or_sales"),
 ]
 
@@ -37,7 +37,7 @@ def _call_tool_with_monetary_value(tool_name, field_name, value):
             "received": "2026-08-10",
             "as_at": "2026-08-21",
         }
-    elif tool_name == "calc_div7a_repayment":
+    elif tool_name == "refuse_div7a":
         arguments = {
             "borrower_name": "Alice",
             "lender_entity_name": "HoldingCo Pty Ltd",
@@ -73,7 +73,7 @@ def test_payday_mcp_tool_keeps_exact_decimal_strings_from_the_engine():
 
 def test_div7a_mcp_tool_validates_money_then_refuses():
     result = _call_tool(
-        "calc_div7a_repayment",
+        "refuse_div7a",
         {
             "borrower_name": "Alice",
             "lender_entity_name": "HoldingCo Pty Ltd",
