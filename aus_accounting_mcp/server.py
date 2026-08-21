@@ -6,7 +6,7 @@ over the Model Context Protocol (MCP).
 
 from datetime import date
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from mcp.server.fastmcp import FastMCP
 
@@ -60,40 +60,74 @@ def _monetary_precision(*values: MoneyInput | None) -> dict[str, str | None]:
 @mcp.tool()
 def get_ato_benchmarks(
     industry_key: str,
-    annual_turnover: float,
-    cost_of_sales: Optional[float] = None,
-    labour_expenses: Optional[float] = None,
-    rent_expenses: Optional[float] = None,
-    motor_vehicle_expenses: Optional[float] = None,
+    annual_turnover: MoneyInput,
+    cost_of_sales: MoneyInput | None = None,
+    labour_expenses: MoneyInput | None = None,
+    rent_expenses: MoneyInput | None = None,
+    motor_vehicle_expenses: MoneyInput | None = None,
 ) -> Dict[str, Any]:
     """
     Query ATO Small Business Benchmarks and analyze expense variances against official ratios.
     Available industries: cafes_and_restaurants, residential_building_construction, hairdressing_and_beauty, plumbing_services, management_consultancy.
+    Send monetary values as decimal strings for exact input and use the *_exact
+    result fields for exact output.
     """
+    annual_turnover_decimal = _decimal_input(annual_turnover, "annual_turnover")
+    cost_of_sales_decimal = (
+        _decimal_input(cost_of_sales, "cost_of_sales")
+        if cost_of_sales is not None
+        else None
+    )
+    labour_expenses_decimal = (
+        _decimal_input(labour_expenses, "labour_expenses")
+        if labour_expenses is not None
+        else None
+    )
+    rent_expenses_decimal = (
+        _decimal_input(rent_expenses, "rent_expenses")
+        if rent_expenses is not None
+        else None
+    )
+    motor_vehicle_expenses_decimal = (
+        _decimal_input(motor_vehicle_expenses, "motor_vehicle_expenses")
+        if motor_vehicle_expenses is not None
+        else None
+    )
+
     res = analyze_ato_benchmarks(
         industry_key=industry_key,
-        annual_turnover=Decimal(str(annual_turnover)),
-        cost_of_sales=Decimal(str(cost_of_sales)) if cost_of_sales is not None else None,
-        labour_expenses=Decimal(str(labour_expenses)) if labour_expenses is not None else None,
-        rent_expenses=Decimal(str(rent_expenses)) if rent_expenses is not None else None,
-        motor_vehicle_expenses=Decimal(str(motor_vehicle_expenses)) if motor_vehicle_expenses is not None else None,
+        annual_turnover=annual_turnover_decimal,
+        cost_of_sales=cost_of_sales_decimal,
+        labour_expenses=labour_expenses_decimal,
+        rent_expenses=rent_expenses_decimal,
+        motor_vehicle_expenses=motor_vehicle_expenses_decimal,
     )
 
     return {
         "industry": res.industry_key,
         "annual_turnover": float(res.annual_turnover),
+        "annual_turnover_exact": _decimal_text(res.annual_turnover),
         "overall_audit_risk": res.overall_audit_risk,
         "metrics": [
             {
                 "metric": m.metric_name,
                 "actual_amount": float(m.actual_amount),
+                "actual_amount_exact": _decimal_text(m.actual_amount),
                 "actual_percentage": float(m.actual_percentage),
+                "actual_percentage_exact": _decimal_text(m.actual_percentage),
                 "benchmark_range": f"{m.benchmark_low}% - {m.benchmark_high}% (median {m.benchmark_median}%)",
                 "status": m.status,
                 "risk_level": m.risk_level,
             }
             for m in res.metrics_evaluated
         ],
+        "monetary_precision": _monetary_precision(
+            annual_turnover,
+            cost_of_sales,
+            labour_expenses,
+            rent_expenses,
+            motor_vehicle_expenses,
+        ),
     }
 
 
@@ -162,18 +196,21 @@ def calc_payday_super_deadline(
 def calc_div7a_repayment(
     borrower_name: str,
     lender_entity_name: str,
-    loan_principal: float,
+    loan_principal: MoneyInput,
     start_fy: int = 2025,
     is_secured_25_year: bool = False,
 ) -> Dict[str, Any]:
     """
     Generate statutory Division 7A s 109N amortisation schedule, benchmark interest rates,
     and dividend offset journal under ITAA 1936.
+    Send the principal as a decimal string for exact input and use the *_exact
+    result fields for exact output.
     """
+    loan_principal_decimal = _decimal_input(loan_principal, "loan_principal")
     sched = generate_div7a_schedule(
         borrower_name=borrower_name,
         lender_entity_name=lender_entity_name,
-        principal=Decimal(str(loan_principal)),
+        principal=loan_principal_decimal,
         start_financial_year=start_fy,
         is_secured_25_year=is_secured_25_year,
     )
@@ -189,22 +226,33 @@ def calc_div7a_repayment(
         "borrower": sched.borrower_name,
         "lender": sched.lender_entity_name,
         "principal": float(sched.original_principal),
+        "principal_exact": _decimal_text(sched.original_principal),
         "term_years": sched.loan_term_years,
         "total_interest_payable": float(sched.total_interest_payable),
+        "total_interest_payable_exact": _decimal_text(sched.total_interest_payable),
         "schedule": [
             {
                 "year_index": y.year_index,
                 "financial_year": y.financial_year,
                 "opening_balance": float(y.opening_balance),
+                "opening_balance_exact": _decimal_text(y.opening_balance),
                 "benchmark_rate": float(y.benchmark_interest_rate),
+                "benchmark_rate_exact": _decimal_text(y.benchmark_interest_rate),
                 "interest_charge": float(y.interest_charge),
+                "interest_charge_exact": _decimal_text(y.interest_charge),
                 "minimum_yearly_repayment": float(y.minimum_yearly_repayment),
+                "minimum_yearly_repayment_exact": _decimal_text(
+                    y.minimum_yearly_repayment
+                ),
                 "principal_reduction": float(y.principal_reduction),
+                "principal_reduction_exact": _decimal_text(y.principal_reduction),
                 "closing_balance": float(y.closing_balance),
+                "closing_balance_exact": _decimal_text(y.closing_balance),
             }
             for y in sched.schedule
         ],
         "first_year_myr_offset_journal": journals,
+        "monetary_precision": _monetary_precision(loan_principal),
     }
 
 
@@ -212,23 +260,28 @@ def calc_div7a_repayment(
 def generate_synthetic_sbr_fixture(
     form_type: str,
     entity_name: str = "Synthetix Pty Ltd",
-    revenue_or_sales: float = 1000000.0,
+    revenue_or_sales: MoneyInput = 1000000.0,
 ) -> Dict[str, Any]:
     """
     Generate synthetic, privacy-safe Standard Business Reporting (SBR) payloads
     for testing Australian tax agent workflows (form_type: 'CTR' or 'BAS').
+    Send revenue or sales as a decimal string for exact input and use the
+    *_exact result fields for exact output.
     """
+    revenue_or_sales_decimal = _decimal_input(
+        revenue_or_sales, "revenue_or_sales"
+    )
     if form_type.upper() == "CTR":
-        rev = Decimal(str(revenue_or_sales))
-        return generate_synthetic_ctr_payload(
+        rev = revenue_or_sales_decimal
+        result = generate_synthetic_ctr_payload(
             company_name=entity_name,
             gross_revenue=rev,
             cost_of_sales=(rev * Decimal("0.4")).quantize(Decimal("0.01")),
             deductible_operating_expenses=(rev * Decimal("0.3")).quantize(Decimal("0.01")),
         )
     elif form_type.upper() == "BAS":
-        sales = Decimal(str(revenue_or_sales))
-        return generate_synthetic_bas_payload(
+        sales = revenue_or_sales_decimal
+        result = generate_synthetic_bas_payload(
             entity_name=entity_name,
             total_sales_g1=sales,
             capital_purchases_g10=Decimal("11000.00"),
@@ -236,6 +289,9 @@ def generate_synthetic_sbr_fixture(
         )
     else:
         raise ValueError(f"Unknown form_type '{form_type}'. Supported: 'CTR', 'BAS'.")
+
+    result["monetary_precision"] = _monetary_precision(revenue_or_sales)
+    return result
 
 
 def run_stdio() -> None:

@@ -4,7 +4,11 @@ Provides synthetic test data for Company Tax Returns, BAS, and STP Phase 2.
 """
 
 from decimal import Decimal
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
+
+def _decimal_text(value: Decimal) -> str:
+    return format(value, "f")
 
 
 def generate_synthetic_ctr_payload(
@@ -43,17 +47,31 @@ def generate_synthetic_ctr_payload(
         },
         "income_statement": {
             "total_business_income": float(gross_revenue),
+            "total_business_income_exact": _decimal_text(gross_revenue),
             "cost_of_sales": float(cos),
+            "cost_of_sales_exact": _decimal_text(cos),
             "gross_profit": float(gross_profit),
+            "gross_profit_exact": _decimal_text(gross_profit),
             "total_expenses": float(expenses + non_deductible_entertainment),
+            "total_expenses_exact": _decimal_text(
+                expenses + non_deductible_entertainment
+            ),
             "operating_net_profit": float(accounting_net_profit),
+            "operating_net_profit_exact": _decimal_text(accounting_net_profit),
         },
         "reconciliation": {
             "accounting_profit": float(accounting_net_profit),
+            "accounting_profit_exact": _decimal_text(accounting_net_profit),
             "add_back_non_deductible": float(non_deductible_entertainment),
+            "add_back_non_deductible_exact": _decimal_text(
+                non_deductible_entertainment
+            ),
             "taxable_income": float(taxable_income),
+            "taxable_income_exact": _decimal_text(taxable_income),
             "applicable_tax_rate": float(tax_rate),
+            "applicable_tax_rate_exact": _decimal_text(tax_rate),
             "gross_tax_liability": float(tax_liability),
+            "gross_tax_liability_exact": _decimal_text(tax_liability),
         },
     }
 
@@ -87,17 +105,26 @@ def generate_synthetic_bas_payload(
         },
         "gst_labels": {
             "G1_total_sales": float(total_sales_g1),
+            "G1_total_sales_exact": _decimal_text(total_sales_g1),
             "G10_capital_purchases": float(capital_purchases_g10),
+            "G10_capital_purchases_exact": _decimal_text(capital_purchases_g10),
             "G11_non_capital_purchases": float(g11),
+            "G11_non_capital_purchases_exact": _decimal_text(g11),
             "1A_gst_on_sales": float(gst_collected_1a),
+            "1A_gst_on_sales_exact": _decimal_text(gst_collected_1a),
             "1B_gst_on_purchases": float(gst_purchases_1b),
+            "1B_gst_on_purchases_exact": _decimal_text(gst_purchases_1b),
             "net_gst": float(net_gst),
+            "net_gst_exact": _decimal_text(net_gst),
         },
         "payg_withholding_labels": {
             "W1_total_salary_wages": float(total_salary_wages_w1),
+            "W1_total_salary_wages_exact": _decimal_text(total_salary_wages_w1),
             "W2_amounts_withheld": float(payg_withheld_w2),
+            "W2_amounts_withheld_exact": _decimal_text(payg_withheld_w2),
         },
         "summary": {
             "total_payable_to_ato": float(net_bas_payable),
+            "total_payable_to_ato_exact": _decimal_text(net_bas_payable),
         },
     }

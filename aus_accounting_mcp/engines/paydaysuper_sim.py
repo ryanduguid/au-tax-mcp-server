@@ -28,8 +28,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import List, Optional
-
+from typing import Optional
 
 _CALENDAR_VERIFIED_FROM = date(2026, 1, 1)
 _CALENDAR_VERIFIED_UNTIL = date(2026, 12, 31)
