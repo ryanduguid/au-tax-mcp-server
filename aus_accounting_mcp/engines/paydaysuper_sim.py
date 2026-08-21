@@ -26,13 +26,14 @@ part-day holidays are business days for this definition.
 
 from dataclasses import dataclass
 from datetime import date, timedelta
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 from enum import Enum
 from typing import List, Optional
 
 
 _CALENDAR_VERIFIED_FROM = date(2026, 1, 1)
 _CALENDAR_VERIFIED_UNTIL = date(2026, 12, 31)
+_PAYDAY_SUPER_COMMENCEMENT = date(2026, 7, 1)
 
 # At least one jurisdiction observes each date throughout that jurisdiction.
 # Names are retained to keep the bundled statutory facts reviewable.
@@ -62,7 +63,7 @@ _SG_CHARGE_RATE_2026 = Decimal("0.12")
 
 
 class ClearingHouseType(str, Enum):
-    SBSCH = "SBSCH"                  # Small Business Superannuation Clearing House (3-7 days)
+    SBSCH = "SBSCH"                  # Closed permanently on 1 July 2026
     COMMERCIAL = "COMMERCIAL"        # Modern Commercial Clearing House (1-3 days)
     DIRECT_PAYMENT = "DIRECT"        # Direct SuperStream Gateway (< 1 day)
 
@@ -120,6 +121,13 @@ def count_business_days(start_date: date, end_date: date) -> int:
     return count
 
 
+def calculate_individual_sg_amount_2026(qualifying_earnings: Decimal) -> Decimal:
+    """Return the SGAA 1992 s 17A amount before contributions or assessment."""
+    if qualifying_earnings < 0:
+        raise ValueError("qualifying earnings must not be negative")
+    return qualifying_earnings * _SG_CHARGE_RATE_2026
+
+
 def simulate_payday_super(
     pay_date: date,
     submission_date: date,
@@ -132,7 +140,19 @@ def simulate_payday_super(
     """
     Simulate Payday Super 2026 compliance window (7 business days from payday).
     Under Payday Super, contributions must be RECEIVED by the super fund by Day 7.
+
+    Late SGC exposure is deliberately unsupported. The post-1 July 2026 charge
+    needs contribution receipt and allocation, assessment, GIC/notional
+    earnings, administrative uplift and choice-loading facts that this
+    simulator does not collect.
     """
+    if pay_date < _PAYDAY_SUPER_COMMENCEMENT:
+        raise ValueError("Payday Super commences on 1 July 2026")
+    if clearing_house_type is ClearingHouseType.SBSCH:
+        raise ValueError(
+            "SBSCH closed on 1 July 2026 and is unavailable for Payday Super"
+        )
+
     # 7 business day statutory window from pay_date
     statutory_due_date = add_business_days(pay_date, 7)
 
@@ -163,41 +183,8 @@ def simulate_payday_super(
             risk_assessment="COMPLIANT: Estimated fund receipt is within the 7 business day statutory window.",
         )
 
-    # If late, compute SGC exposure under SGAA 1992
-    # Shortfall is calculated on salary and wages (not just OTE)
-    base_for_shortfall = (
-        total_salary_wages
-        if total_salary_wages is not None
-        else (sg_contribution / _SG_CHARGE_RATE_2026)
-    )
-    shortfall = (base_for_shortfall * _SG_CHARGE_RATE_2026).quantize(
-        Decimal("0.01"), rounding=ROUND_HALF_UP
-    )
-
-    # Nominal interest: 10% p.a. from start of quarter to SGC lodgment date (est. 60 days)
-    nominal_interest = (shortfall * Decimal("0.10") * Decimal(days_in_quarter_prior + 30) / Decimal("365")).quantize(
-        Decimal("0.01"), rounding=ROUND_HALF_UP
-    )
-    admin_fee = Decimal(num_employees * 20)
-    total_exposure = shortfall + nominal_interest + admin_fee
-
-    risk_msg = (
-        f"LATE / NON-COMPLIANT: Fund receives payment {business_days_from_pay} business days after payday "
-        f"(due {statutory_due_date.isoformat()}, est. received {estimated_receipt_date.isoformat()}). "
-        f"SG Charge liability triggered: ${total_exposure:,.2f}."
-    )
-
-    return PaydaySuperSimulationResult(
-        pay_date=pay_date,
-        statutory_due_date=statutory_due_date,
-        clearing_house_submission_date=submission_date,
-        estimated_fund_receipt_date=estimated_receipt_date,
-        is_compliant=False,
-        business_days_taken=business_days_from_pay,
-        sg_contribution_amount=sg_contribution,
-        potential_sgc_shortfall=shortfall,
-        nominal_interest_charge=nominal_interest,
-        admin_fee_charge=admin_fee,
-        total_sgc_exposure=total_exposure,
-        risk_assessment=risk_msg,
+    raise ValueError(
+        "Post-1 July 2026 SGC exposure is not modelled because the simulator "
+        "does not collect contribution allocation, assessment, GIC/notional "
+        "earnings, administrative uplift or choice-loading facts"
     )

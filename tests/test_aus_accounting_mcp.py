@@ -46,16 +46,6 @@ def test_payday_super_simulation():
     assert comp_res.is_compliant is True
     assert comp_res.total_sgc_exposure == Decimal("0.00")
 
-    # Non-compliant scenario: Submitted late via SBSCH (+5 business days)
-    late_res = simulate_payday_super(
-        pay_date=date(2026, 7, 7),         # Tuesday
-        submission_date=date(2026, 7, 15), # 6 business days later
-        sg_contribution=Decimal("1150.00"),
-        clearing_house_type=ClearingHouseType.SBSCH, # +5 days -> well past 7-day statutory window
-    )
-    assert late_res.is_compliant is False
-    assert late_res.total_sgc_exposure > Decimal("1150.00")
-
 def test_ato_benchmarks_analysis():
     # Cafe with turnover $1M, cost of sales $300k (30% within 28-37% range)
     res = analyze_ato_benchmarks(

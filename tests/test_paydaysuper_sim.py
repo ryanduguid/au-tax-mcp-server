@@ -3,6 +3,7 @@ from decimal import Decimal
 
 import pytest
 
+from aus_accounting_mcp.engines import paydaysuper_sim as payday_super
 from aus_accounting_mcp.engines.paydaysuper_sim import (
     ClearingHouseType,
     add_business_days,
@@ -60,14 +61,39 @@ def test_business_day_calculation_fails_beyond_the_verified_2026_horizon():
         add_business_days(date(2026, 12, 31), 1)
 
 
-def test_2026_shortfall_uses_the_twelve_percent_charge_rate():
-    result = simulate_payday_super(
-        pay_date=date(2026, 7, 7),
-        submission_date=date(2026, 7, 20),
-        sg_contribution=Decimal("0.00"),
-        total_salary_wages=Decimal("10000.00"),
-        clearing_house_type=ClearingHouseType.DIRECT_PAYMENT,
-    )
+def test_2026_individual_sg_amount_uses_the_twelve_percent_charge_rate():
+    assert payday_super.calculate_individual_sg_amount_2026(
+        Decimal("10000.00")
+    ) == Decimal("1200.00")
 
-    assert result.is_compliant is False
-    assert result.potential_sgc_shortfall == Decimal("1200.00")
+
+def test_payday_super_rejects_pay_dates_before_commencement():
+    with pytest.raises(ValueError, match="commences on 1 July 2026"):
+        simulate_payday_super(
+            pay_date=date(2026, 6, 30),
+            submission_date=date(2026, 6, 30),
+            sg_contribution=Decimal("1200.00"),
+        )
+
+
+def test_payday_super_rejects_the_closed_sbsch_route():
+    with pytest.raises(ValueError, match="SBSCH closed on 1 July 2026"):
+        simulate_payday_super(
+            pay_date=date(2026, 7, 7),
+            submission_date=date(2026, 7, 7),
+            sg_contribution=Decimal("1200.00"),
+            clearing_house_type=ClearingHouseType.SBSCH,
+        )
+
+
+def test_late_result_does_not_report_the_obsolete_quarterly_sgc_formula():
+    with pytest.raises(
+        ValueError, match="Post-1 July 2026 SGC exposure is not modelled"
+    ):
+        simulate_payday_super(
+            pay_date=date(2026, 7, 7),
+            submission_date=date(2026, 7, 20),
+            sg_contribution=Decimal("1200.00"),
+            total_salary_wages=Decimal("10000.00"),
+            clearing_house_type=ClearingHouseType.DIRECT_PAYMENT,
+        )
