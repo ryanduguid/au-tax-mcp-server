@@ -117,7 +117,7 @@ def calc_payday_super_deadline(
 
 
 @mcp.tool()
-def calc_div7a_repayment(
+def refuse_div7a(
     borrower_name: str,
     lender_entity_name: str,
     loan_principal: str,

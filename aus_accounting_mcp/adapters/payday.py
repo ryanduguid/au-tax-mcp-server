@@ -28,8 +28,12 @@ DISCLAIMER = (
     "before a contribution can be ON_TIME."
 )
 
-_CALENDAR = load_calendar()
-_GIC = load_gic()
+def _calendar():
+    return load_calendar()
+
+
+def _gic():
+    return load_gic()
 
 
 def _required_date(value: str, field: str) -> date:
@@ -124,8 +128,8 @@ def review_contribution(
     try:
         results = assess(
             [line],
-            _CALENDAR,
-            _GIC,
+            _calendar(),
+            _gic(),
             as_at_day,
             transition_allocation_confirmed=False,
         )
