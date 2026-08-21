@@ -23,7 +23,8 @@ def parse_amount(value: str, field: str) -> Decimal:
         raise ValueError(
             f"{field} absolute value must not exceed AUD {MAX_MONEY_MAGNITUDE}"
         )
-    if amount.as_tuple().exponent < -MAX_MONEY_DECIMAL_PLACES:
+    exponent = amount.as_tuple().exponent
+    if isinstance(exponent, int) and exponent < -MAX_MONEY_DECIMAL_PLACES:
         raise ValueError(
             f"{field} must have no more than {MAX_MONEY_DECIMAL_PLACES} decimal places"
         )
