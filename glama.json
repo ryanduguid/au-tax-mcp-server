@@ -1,0 +1,30 @@
+{
+  "": "https://glama.ai/mcp/schemas/server.json",
+  "name": "aus-accounting-mcp",
+  "description": "Australian Tax & Computational Accounting MCP server exposing reviewed ATO small business benchmarks, Payday Superannuation compliance, and synthetic SBR test fixtures.",
+  "maintainers": [
+    "ryanduguid"
+  ],
+  "tools": [
+    {
+      "name": "list_ato_benchmark_industries",
+      "description": "List or search the shipped ATO small business benchmark industries."
+    },
+    {
+      "name": "get_ato_benchmarks",
+      "description": "Compare operator-supplied expense bucket totals against official ATO benchmark ranges."
+    },
+    {
+      "name": "calc_payday_super_deadline",
+      "description": "Evaluate Australian Payday Super statutory due date and remittance compliance under SGAA 1992 s 6(1)."
+    },
+    {
+      "name": "calc_div7a_repayment",
+      "description": "Returns a refusal until a reviewed Division 7A benchmark engine is wired."
+    },
+    {
+      "name": "generate_synthetic_sbr_fixture",
+      "description": "Generate synthetic Company Tax Return (CTR) or Business Activity Statement (BAS) SBR payload for AI agent verification."
+    }
+  ]
+}

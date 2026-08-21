@@ -1,84 +1,153 @@
-# John Kenley
+<!-- mcp-name: io.github.ryanduguid/aus-accounting-mcp -->
+# John Kenley (`aus-accounting-mcp`)
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Model Context Protocol](https://img.shields.io/badge/MCP-Standard%20Protocol-8A2BE2)](https://modelcontextprotocol.io/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![tests](https://img.shields.io/badge/tests-44%20passing-brightgreen)](tests)
+[![Glama MCP](https://glama.ai/mcp/servers/ryanduguid/aus-accounting-mcp/badges/badge.svg)](https://glama.ai/mcp/servers/ryanduguid/aus-accounting-mcp)
+[![Smithery Badge](https://smithery.ai/badge/@ryanduguid/aus-accounting-mcp)](https://smithery.ai/server/@ryanduguid/aus-accounting-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-MCP facade over reviewed Australian computational accounting engines. Compatible with Claude Desktop, Claude Code, Cursor and Antigravity.
+An open-source **Model Context Protocol (MCP) server** exposing reviewed Australian computational accounting engines directly to AI agents. Designed for seamless plug-and-play integration with **Claude Desktop**, **Claude Code**, **Cursor**, **Zed**, and **Antigravity**.
 
-This server does **not** reimplement tax law. Payday Super and ATO small-business benchmarks are delegated to:
+---
 
-- [CharlesHenryWickens](https://github.com/ryanduguid/CharlesHenryWickens) (`payday-super-checker`, `paydaysuper`)
-- [RaymondChambers](https://github.com/ryanduguid/RaymondChambers) (`ato-benchmark-compare`)
+## ⚡ Quick Start
 
-Division 7A is **refused** until a reviewed engine exists. SBR payloads are **synthetic fixtures**, not lodgments.
+### 1. Install & Run via `uvx` (Zero-Config)
+```bash
+# Test the MCP server locally
+uvx --from git+https://github.com/ryanduguid/JohnKenley.git aus-accounting-mcp
+```
 
-The repository name is the public project identity; the `aus-accounting-mcp` distribution, `aus-accounting-mcp` command, `aus_accounting_mcp` import package and the `aus-accounting-mcp` MCP server name remain compatibility identifiers, so existing client configurations keep working unchanged.
+### 2. Add to Claude Code
+```bash
+claude mcp add aus-accounting -- uvx --from git+https://github.com/ryanduguid/JohnKenley.git aus-accounting-mcp
+```
 
-John Kenley was the first technical officer of the Australian Society of Accountants, now CPA Australia, and moved to a full-time role at the Australian Accounting Research Foundation in 1966, where he helped establish the Auditing Standards Board. This server exposes reviewed engines only, and refuses the rest.
+### 3. Add to Smithery CLI
+```bash
+npx -y @smithery/cli install @ryanduguid/aus-accounting-mcp --client claude
+```
 
-## Tools
+---
+
+## 🏛️ Architecture & Grounding
+
+```mermaid
+flowchart LR
+    subgraph Clients ["AI Clients & IDEs"]
+        CD["Claude Desktop"]
+        CC["Claude Code"]
+        CR["Cursor / Antigravity"]
+    end
+
+    subgraph MCP ["John Kenley (aus-accounting-mcp)"]
+        Router["JSON-RPC Tool Router"]
+        Guard["Input Validation & Bounds Checking"]
+    end
+
+    subgraph Engines ["Reviewed Deterministic Engines"]
+        ATO["ato-benchmark-compare<br/><i>(Raymond Chambers)</i>"]
+        Super["payday-super-checker<br/><i>(Charles Henry Wickens)</i>"]
+        SBR["Synthetic SBR Fixture Generator"]
+    end
+
+    Clients --> Router
+    Router --> Guard
+    Guard --> ATO
+    Guard --> Super
+    Guard --> SBR
+```
+
+This server does **not** hallucinate or approximate tax law. All computations are strictly delegated to deterministic, unit-tested engine packages:
+- **[CharlesHenryWickens](https://github.com/ryanduguid/CharlesHenryWickens)** (`payday-super-checker`, `paydaysuper`) – Evaluates statutory Payday Super due dates under *SGAA 1992 s 6(1)*.
+- **[RaymondChambers](https://github.com/ryanduguid/RaymondChambers)** (`ato-benchmark-compare`) – Compares trial balance expense buckets against official ATO small-business benchmarks.
+- **Division 7A** is explicitly **refused** until a formally reviewed engine is wired.
+- **SBR Payloads** are strictly **synthetic fixtures** (`mode: synthetic`) for agent testing, never unverified live lodgments.
+
+---
+
+## 🛠️ Tools Exposed
 
 | Tool | Engine | What it does |
 | :--- | :--- | :--- |
-| `list_ato_benchmark_industries` | ato-benchmark-compare | List or search the shipped ATO business types |
-| `get_ato_benchmarks` | ato-benchmark-compare | Compare operator-supplied bucket totals to ATO ranges |
-| `calc_payday_super_deadline` | payday-super-checker | Review one contribution; `as_at` is required; does not invent clearing-house latency; cannot confirm LCR 2026/1 transition allocation |
-| `calc_div7a_repayment` | none | Returns a refusal. No reviewed Div 7A engine is wired |
-| `generate_synthetic_sbr_fixture` | local fixture | Synthetic CTR/BAS for agent tests (`synthetic: true`) |
+| `list_ato_benchmark_industries` | `ato-benchmark-compare` | List or search the official ATO small-business benchmark categories |
+| `get_ato_benchmarks` | `ato-benchmark-compare` | Compare supplied turnover & expense buckets to statutory ATO benchmark ranges |
+| `calc_payday_super_deadline` | `payday-super-checker` | Evaluate single contribution statutory due date & remittance compliance |
+| `calc_div7a_repayment` | *None* | Returns explicit refusal with statutory explanation until engine is certified |
+| `generate_synthetic_sbr_fixture` | Local fixture | Generates synthetic CTR/BAS payloads for AI agent eval harnesses (`synthetic: true`) |
 
-Amounts are decimal strings, finite, at most two decimal places, and no greater than AUD 1,000,000,000,000.00. Dates are ISO-8601. Payday Super uses payday-super-checker's national SGAA 1992 s 6(1) calendar. The checker marks `UNKNOWN` or refuses where the facts do not establish the statutory test. A remittance date alone cannot produce `ON_TIME`. Omitted ATO expense buckets are `not_supplied`, not zero.
+> **Integrity Invariants**: Monetary values are handled as quantized exact decimals (never IEEE 754 binary floats). Input bounds are capped at AUD 1,000,000,000,000.00. Missing expense buckets are categorized as `not_supplied` rather than assumed zero.
 
-## Install
+---
 
-Python 3.10+. The engines are installed from GitHub because they are not on PyPI.
+## 💻 Client Configuration
 
-```bash
-git clone https://github.com/ryanduguid/JohnKenley.git
-cd JohnKenley
-pip install .
-```
-
-```bash
-aus-accounting-mcp
-```
-
-## Client integration
-
-### Claude Desktop
-
-`%APPDATA%\Claude\claude_desktop_config.json`:
+<details>
+<summary><b>Claude Desktop</b> (<code>%APPDATA%\Claude\claude_desktop_config.json</code>)</summary>
 
 ```json
 {
   "mcpServers": {
     "aus-accounting": {
-      "command": "aus-accounting-mcp"
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/ryanduguid/JohnKenley.git", "aus-accounting-mcp"]
     }
   }
 }
 ```
+</details>
 
-### Cursor
-
-`.cursor/mcp.json`:
+<details>
+<summary><b>Cursor</b> (<code>.cursor/mcp.json</code>)</summary>
 
 ```json
 {
   "mcpServers": {
     "aus-accounting": {
-      "command": "aus-accounting-mcp"
+      "command": "uvx",
+      "args": ["--from", "git+https://github.com/ryanduguid/JohnKenley.git", "aus-accounting-mcp"]
     }
   }
 }
 ```
+</details>
 
-### Claude Code
+<details>
+<summary><b>Zed Editor</b> (<code>~/.config/zed/settings.json</code>)</summary>
 
-```bash
-claude mcp add aus-accounting -- aus-accounting-mcp
+```json
+{
+  "context_servers": {
+    "aus-accounting": {
+      "command": {
+        "env": {},
+        "path": "uvx",
+        "args": ["--from", "git+https://github.com/ryanduguid/JohnKenley.git", "aus-accounting-mcp"]
+      }
+    }
+  }
+}
 ```
+</details>
 
-## License
+---
 
-MIT License. Created by Ryan Duguid.
+## 📜 Historical Context
+
+John Kenley was the first technical officer of the Australian Society of Accountants (now CPA Australia) and moved to a full-time role at the Australian Accounting Research Foundation in 1966, where he helped establish the Auditing Standards Board. This MCP server honors that heritage by exposing certified, deterministic accounting engines only.
+
+## 📄 License & Citation
+
+Licensed under the [MIT License](./LICENSE).
+
+To cite this repository in technical literature or software documentation:
+```bibtex
+@software{duguid_aus_accounting_mcp_2026,
+  author = {Duguid, Ryan},
+  title = {aus-accounting-mcp: Model Context Protocol Server for Australian Taxation and Computational Accounting},
+  year = {2026},
+  url = {https://github.com/ryanduguid/JohnKenley}
+}
+```
