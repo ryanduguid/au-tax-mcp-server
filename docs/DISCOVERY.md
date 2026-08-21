@@ -14,7 +14,7 @@ Local MCP server for Australian computational accounting: ATO small-business ben
 Website:
 
 ```text
-https://github.com/ryanduguid/aus-accounting-mcp#install
+https://github.com/ryanduguid/JohnKenley#install
 ```
 
 Topics:
