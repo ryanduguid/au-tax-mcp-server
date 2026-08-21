@@ -78,7 +78,7 @@ codex mcp add aus-accounting -- uvx --from git+https://github.com/ryanduguid/Joh
 | `list_ato_benchmark_industries` | List or search the shipped ATO business types | ato-benchmark-compare |
 | `get_ato_benchmarks` | Compare operator-supplied bucket totals to ATO ranges | ato-benchmark-compare |
 | `calc_payday_super_deadline` | Review one contribution against Payday Super timing | payday-super-checker |
-| `calc_div7a_repayment` | Returns a refusal. No reviewed Div 7A engine is wired | none |
+| `refuse_div7a` | Returns a refusal. No reviewed Div 7A engine is wired | none |
 | `generate_synthetic_sbr_fixture` | Synthetic CTR/BAS for agent tests (`synthetic: true`) | local fixture |
 
 `calc_payday_super_deadline` requires `as_at`. It does not invent clearing-house latency and cannot confirm LCR 2026/1 transition allocation. A remittance date alone cannot produce `ON_TIME`. Omitted ATO expense buckets are `not_supplied`, not zero.
