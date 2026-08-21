@@ -5,18 +5,56 @@ over the Model Context Protocol (MCP).
 """
 
 from datetime import date
-from decimal import Decimal
-from typing import Optional, Dict, Any
+from decimal import Decimal, InvalidOperation
+from typing import Any, Dict, Optional
 
 from mcp.server.fastmcp import FastMCP
 
+from .engines.benchmarks import analyze_ato_benchmarks
 from .engines.div7a import generate_div7a_schedule, generate_dividend_offset_journal
-from .engines.paydaysuper_sim import simulate_payday_super, ClearingHouseType
-from .engines.benchmarks import analyze_ato_benchmarks, INDUSTRY_BENCHMARKS
-from .engines.synthetic_sbr import generate_synthetic_ctr_payload, generate_synthetic_bas_payload
+from .engines.paydaysuper_sim import ClearingHouseType, simulate_payday_super
+from .engines.synthetic_sbr import (
+    generate_synthetic_bas_payload,
+    generate_synthetic_ctr_payload,
+)
 
 # Initialize FastMCP Server
 mcp = FastMCP("aus-accounting-mcp")
+
+MoneyInput = str | int | float
+
+
+def _decimal_input(value: MoneyInput, field_name: str) -> Decimal:
+    if isinstance(value, bool):
+        raise TypeError(f"{field_name} must be a finite decimal value")
+    try:
+        parsed = Decimal(value) if isinstance(value, int) else Decimal(str(value))
+    except (InvalidOperation, ValueError, TypeError) as exc:
+        raise ValueError(f"{field_name} must be a finite decimal value") from exc
+    if not parsed.is_finite():
+        raise ValueError(f"{field_name} must be a finite decimal value")
+    return parsed
+
+
+def _decimal_text(value: Decimal) -> str:
+    return format(value, "f")
+
+
+def _monetary_precision(*values: MoneyInput | None) -> dict[str, str | None]:
+    exact_inputs = all(value is None or isinstance(value, str) for value in values)
+    return {
+        "input_mode": "exact_decimal_string" if exact_inputs else "legacy_json_number",
+        "input_warning": None
+        if exact_inputs
+        else (
+            "JSON numbers may already be rounded by a client or parser; send "
+            "monetary inputs as decimal strings for exact values."
+        ),
+        "output_warning": (
+            "Numeric monetary fields remain for compatibility and may round; "
+            "use the corresponding *_exact string fields for exact values."
+        ),
+    }
 
 
 @mcp.tool()
@@ -63,23 +101,34 @@ def get_ato_benchmarks(
 def calc_payday_super_deadline(
     pay_date_iso: str,
     submission_date_iso: str,
-    sg_contribution: float,
+    sg_contribution: MoneyInput,
     clearing_house_type: str = "COMMERCIAL",
-    total_salary_wages: Optional[float] = None,
+    total_salary_wages: MoneyInput | None = None,
 ) -> Dict[str, Any]:
     """
     Simulate Payday Super 2026 compliance window (7 business days from payday)
-    and estimate Superannuation Guarantee Charge (SGC) exposure for late receipt.
+    and fail closed on late receipt because full post-reform SGC facts are not
+    available to this tool.
+    Send monetary values as decimal strings for exact input and use the *_exact
+    result fields for exact output. JSON numbers remain supported for existing
+    clients and are explicitly marked as a potentially rounded legacy mode.
     """
     ch_type = ClearingHouseType[clearing_house_type.upper()]
     p_date = date.fromisoformat(pay_date_iso)
     s_date = date.fromisoformat(submission_date_iso)
 
+    sg_contribution_decimal = _decimal_input(sg_contribution, "sg_contribution")
+    total_salary_wages_decimal = (
+        _decimal_input(total_salary_wages, "total_salary_wages")
+        if total_salary_wages is not None
+        else None
+    )
+
     res = simulate_payday_super(
         pay_date=p_date,
         submission_date=s_date,
-        sg_contribution=Decimal(str(sg_contribution)),
-        total_salary_wages=Decimal(str(total_salary_wages)) if total_salary_wages is not None else None,
+        sg_contribution=sg_contribution_decimal,
+        total_salary_wages=total_salary_wages_decimal,
         clearing_house_type=ch_type,
     )
 
@@ -91,12 +140,20 @@ def calc_payday_super_deadline(
         "is_compliant": res.is_compliant,
         "business_days_from_pay": res.business_days_taken,
         "sg_contribution": float(res.sg_contribution_amount),
+        "sg_contribution_exact": _decimal_text(res.sg_contribution_amount),
         "sgc_exposure": {
             "shortfall": float(res.potential_sgc_shortfall),
+            "shortfall_exact": _decimal_text(res.potential_sgc_shortfall),
             "nominal_interest": float(res.nominal_interest_charge),
+            "nominal_interest_exact": _decimal_text(res.nominal_interest_charge),
             "admin_fee": float(res.admin_fee_charge),
+            "admin_fee_exact": _decimal_text(res.admin_fee_charge),
             "total_liability": float(res.total_sgc_exposure),
+            "total_liability_exact": _decimal_text(res.total_sgc_exposure),
         },
+        "monetary_precision": _monetary_precision(
+            sg_contribution, total_salary_wages
+        ),
         "risk_assessment": res.risk_assessment,
     }
 
