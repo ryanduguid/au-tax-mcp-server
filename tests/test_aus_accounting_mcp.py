@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from aus_accounting_mcp.server import (
-    calc_div7a_repayment,
+    refuse_div7a,
     calc_payday_super_deadline,
     generate_synthetic_sbr_fixture,
     get_ato_benchmarks,
@@ -136,7 +136,7 @@ def test_ato_unknown_industry_is_refused() -> None:
 
 
 def test_div7a_is_refused() -> None:
-    payload = calc_div7a_repayment("Alice", "HoldingCo Pty Ltd", "50000.00")
+    payload = refuse_div7a("Alice", "HoldingCo Pty Ltd", "50000.00")
     assert payload["available"] is False
     assert payload["reviewed_engine"] is False
     assert "payday-super-checker" in payload["reason"]
@@ -157,7 +157,7 @@ def test_client_snippets_use_uvx_from_github() -> None:
     root = Path(__file__).resolve().parents[1]
     expected_args = [
         "--from",
-        "git+https://github.com/ryanduguid/JohnKenley",
+        "git+https://github.com/ryanduguid/JohnKenley.git@38943a21ed8a73d844b5113164de2a9fa010f96e",
         "aus-accounting-mcp",
     ]
     for name in ("cursor_mcp.json", "claude_desktop_config.json", "antigravity_config.json"):
