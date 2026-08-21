@@ -1,4 +1,6 @@
 import importlib
+import json
+from pathlib import Path
 
 import pytest
 
@@ -149,3 +151,23 @@ def test_synthetic_sbr_fixtures_are_labelled() -> None:
 
     bas = generate_synthetic_sbr_fixture("BAS", revenue_or_sales="110000.00")
     assert bas["gst_labels"]["1A_gst_on_sales"] == "10000.00"
+
+
+def test_client_snippets_use_uvx_from_github() -> None:
+    root = Path(__file__).resolve().parents[1]
+    expected_args = [
+        "--from",
+        "git+https://github.com/ryanduguid/aus-accounting-mcp",
+        "aus-accounting-mcp",
+    ]
+    for name in ("cursor_mcp.json", "claude_desktop_config.json", "antigravity_config.json"):
+        payload = json.loads((root / "clients" / name).read_text(encoding="utf-8"))
+        server = payload["mcpServers"]["aus-accounting"]
+        assert server["command"] == "uvx"
+        assert server["args"] == expected_args
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    disclaimer = (root / "DISCLAIMER.md").read_text(encoding="utf-8")
+    assert "uvx --from git+https://github.com/ryanduguid/aus-accounting-mcp" in readme
+    assert "DISCLAIMER.md" in readme
+    assert "not tax" in disclaimer.lower()
+    assert "synthetic: true" in disclaimer
