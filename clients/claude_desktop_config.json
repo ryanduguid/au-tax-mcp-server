@@ -1,8 +1,12 @@
 {
   "mcpServers": {
     "aus-accounting": {
-      "command": "python",
-      "args": ["-m", "aus_accounting_mcp.cli"]
+      "command": "uvx",
+      "args": [
+        "--from",
+        "git+https://github.com/ryanduguid/aus-accounting-mcp",
+        "aus-accounting-mcp"
+      ]
     }
   }
 }
