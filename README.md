@@ -94,6 +94,16 @@ Compare these P&L buckets to the ATO small-business benchmarks for this industry
 Review this Payday Super contribution. QE day, remitted date, and fund-receipt date are in the CSV. as_at is today. Do not invent an SGC charge.
 ```
 
-## Licence
+## Licence & Citation
 
 MIT License. Created by Ryan Duguid. Boundary statement: [DISCLAIMER.md](DISCLAIMER.md). Discovery copy: [docs/DISCOVERY.md](docs/DISCOVERY.md).
+
+To cite this repository:
+```bibtex
+@software{duguid_aus_accounting_mcp_2026,
+  author = {Duguid, Ryan},
+  title = {aus-accounting-mcp: Model Context Protocol Server for Australian Taxation and Computational Accounting},
+  year = {2026},
+  url = {https://github.com/ryanduguid/JohnKenley}
+}
+```
