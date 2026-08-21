@@ -1,8 +1,10 @@
+<!-- mcp-name: io.github.ryanduguid/aus-accounting-mcp -->
 # JohnKenley
 
 [![tests](https://github.com/ryanduguid/JohnKenley/actions/workflows/ci.yml/badge.svg)](https://github.com/ryanduguid/JohnKenley/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Model Context Protocol](https://img.shields.io/badge/MCP-Standard%20Protocol-8A2BE2)](https://modelcontextprotocol.io/)
+[![Glama](https://glama.ai/mcp/servers/ryanduguid/JohnKenley/badge)](https://glama.ai/mcp/servers/ryanduguid/JohnKenley)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 MCP facade over reviewed Australian computational accounting engines. Compatible with Claude Desktop, Claude Code, Cursor, Codex and Antigravity.
@@ -96,4 +98,4 @@ Review this Payday Super contribution. QE day, remitted date, and fund-receipt d
 
 ## Licence
 
-MIT License. Created by Ryan Duguid. Boundary statement: [DISCLAIMER.md](DISCLAIMER.md). Discovery copy: [docs/DISCOVERY.md](docs/DISCOVERY.md).
+MIT License. Created by Ryan Duguid. Boundary statement: [DISCLAIMER.md](DISCLAIMER.md). Discovery copy: [docs/DISCOVERY.md](docs/DISCOVERY.md). Cite: [CITATION.cff](CITATION.cff).

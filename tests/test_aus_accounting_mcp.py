@@ -169,5 +169,12 @@ def test_client_snippets_use_uvx_from_github() -> None:
     disclaimer = (root / "DISCLAIMER.md").read_text(encoding="utf-8")
     assert "uvx --from git+https://github.com/ryanduguid/JohnKenley" in readme
     assert "DISCLAIMER.md" in readme
+    assert "glama.ai/mcp/servers/ryanduguid/JohnKenley" in readme
     assert "not tax" in disclaimer.lower()
     assert "synthetic: true" in disclaimer
+    citation = (root / "CITATION.cff").read_text(encoding="utf-8")
+    assert "https://github.com/ryanduguid/JohnKenley" in citation
+    glama = json.loads((root / "glama.json").read_text(encoding="utf-8"))
+    assert glama["maintainers"] == ["ryanduguid"]
+    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    assert "git+https://github.com/ryanduguid/CharlesHenryWickens.git@" in pyproject

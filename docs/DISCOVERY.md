@@ -1,7 +1,8 @@
 # Discovery metadata
 
 Use this file as the source of truth for public discovery copy across GitHub
-About, repository topics, README, `pyproject.toml`, and `glama.json`.
+About, repository topics, README, `pyproject.toml`, `glama.json`, and
+`CITATION.cff`.
 
 ## GitHub About
 
@@ -51,5 +52,6 @@ GitHub. Pin this repository from the profile **Customize your pins** dialog.
 - Name tools as jobs, not as the historical engine repositories.
 - Keep refusals visible (Division 7A unwired; SBR synthetic).
 - Do not imply ATO, CA ANZ, or vendor endorsement.
-- Do not claim a hosted corpus or a PyPI package until those exist.
+- Do not claim a hosted corpus, a PyPI package, or a Smithery listing until those exist.
+- The Glama listing is https://glama.ai/mcp/servers/ryanduguid/JohnKenley.
 - Do not copy AGPL or proprietary-corpus language from other ATO MCP products.
