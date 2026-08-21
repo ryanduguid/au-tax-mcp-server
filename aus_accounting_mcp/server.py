@@ -23,6 +23,8 @@ mcp = FastMCP("aus-accounting-mcp")
 
 MoneyInput = str | int | float
 PaydayClearingHouseRoute = Literal["COMMERCIAL", "DIRECT"]
+_MAX_MONEY_MAGNITUDE = Decimal("1000000000000.00")
+_MAX_MONEY_DECIMAL_PLACES = 2
 
 
 def _decimal_input(value: MoneyInput, field_name: str) -> Decimal:
@@ -34,6 +36,16 @@ def _decimal_input(value: MoneyInput, field_name: str) -> Decimal:
         raise ValueError(f"{field_name} must be a finite decimal value") from exc
     if not parsed.is_finite():
         raise ValueError(f"{field_name} must be a finite decimal value")
+    if parsed.copy_abs() > _MAX_MONEY_MAGNITUDE:
+        raise ValueError(
+            f"{field_name} absolute value must not exceed "
+            "AUD 1000000000000.00"
+        )
+    if parsed.as_tuple().exponent < -_MAX_MONEY_DECIMAL_PLACES:
+        raise ValueError(
+            f"{field_name} must have no more than "
+            f"{_MAX_MONEY_DECIMAL_PLACES} decimal places"
+        )
     return parsed
 
 
@@ -71,7 +83,9 @@ def get_ato_benchmarks(
     Query ATO Small Business Benchmarks and analyze expense variances against official ratios.
     Available industries: cafes_and_restaurants, residential_building_construction, hairdressing_and_beauty, plumbing_services, management_consultancy.
     Send monetary values as decimal strings for exact input and use the *_exact
-    result fields for exact output.
+    result fields for exact output. Each monetary input must be finite, have no
+    more than two decimal places and have an absolute value no greater than AUD
+    1 trillion.
     """
     annual_turnover_decimal = _decimal_input(annual_turnover, "annual_turnover")
     cost_of_sales_decimal = (
@@ -147,6 +161,8 @@ def calc_payday_super_deadline(
     Send monetary values as decimal strings for exact input and use the *_exact
     result fields for exact output. JSON numbers remain supported for existing
     clients and are explicitly marked as a potentially rounded legacy mode.
+    Monetary inputs must be finite, have no more than two decimal places and
+    have an absolute value no greater than AUD 1 trillion.
     """
     ch_type = ClearingHouseType(clearing_house_type)
     p_date = date.fromisoformat(pay_date_iso)
@@ -190,7 +206,9 @@ def calc_div7a_repayment(
     Generate statutory Division 7A s 109N amortisation schedule, benchmark interest rates,
     and dividend offset journal under ITAA 1936.
     Send the principal as a decimal string for exact input and use the *_exact
-    result fields for exact output.
+    result fields for exact output. The principal must be finite, have no more
+    than two decimal places and have an absolute value no greater than AUD 1
+    trillion.
     """
     loan_principal_decimal = _decimal_input(loan_principal, "loan_principal")
     sched = generate_div7a_schedule(
@@ -252,7 +270,9 @@ def generate_synthetic_sbr_fixture(
     Generate synthetic, privacy-safe Standard Business Reporting (SBR) payloads
     for testing Australian tax agent workflows (form_type: 'CTR' or 'BAS').
     Send revenue or sales as a decimal string for exact input and use the
-    *_exact result fields for exact output.
+    *_exact result fields for exact output. The amount must be finite, have no
+    more than two decimal places and have an absolute value no greater than AUD
+    1 trillion.
     """
     revenue_or_sales_decimal = _decimal_input(
         revenue_or_sales, "revenue_or_sales"

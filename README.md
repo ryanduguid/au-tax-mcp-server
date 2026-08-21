@@ -38,6 +38,20 @@ because it closed on 1 July 2026.
 
 ---
 
+## Monetary input limits
+
+All monetary MCP inputs accept exact decimal strings (preferred) and legacy
+JSON numbers. Inputs must be finite, have an absolute value no greater than
+AUD 1,000,000,000,000.00 and use no more than two fractional decimal places.
+Exponent notation is accepted only when the resulting value and scale meet
+those limits, so `1e2` and `1e-2` are valid but `1e30`, `1e10000` and
+`1e-10000` are rejected. This conservative domain keeps the compatibility
+number fields and derived JSON finite. Use each `*_exact` string result for
+exact monetary values; legacy number inputs and number outputs may already
+have been rounded by a client or JSON parser.
+
+---
+
 ## ⚡ Installation & Quickstart
 
 ### 1. Install via pip
