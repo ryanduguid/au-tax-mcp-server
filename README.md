@@ -1,4 +1,4 @@
-# aus-accounting-mcp
+# John Kenley
 
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Model Context Protocol](https://img.shields.io/badge/MCP-Standard%20Protocol-8A2BE2)](https://modelcontextprotocol.io/)
@@ -8,10 +8,14 @@ MCP facade over reviewed Australian computational accounting engines. Compatible
 
 This server does **not** reimplement tax law. Payday Super and ATO small-business benchmarks are delegated to:
 
-- [payday-super-checker](https://github.com/ryanduguid/payday-super-checker) (`paydaysuper`)
+- [CharlesHenryWickens](https://github.com/ryanduguid/CharlesHenryWickens) (`payday-super-checker`, `paydaysuper`)
 - [RaymondChambers](https://github.com/ryanduguid/RaymondChambers) (`ato-benchmark-compare`)
 
 Division 7A is **refused** until a reviewed engine exists. SBR payloads are **synthetic fixtures**, not lodgments.
+
+The repository name is the public project identity; the `aus-accounting-mcp` distribution, `aus-accounting-mcp` command, `aus_accounting_mcp` import package and the `aus-accounting-mcp` MCP server name remain compatibility identifiers, so existing client configurations keep working unchanged.
+
+John Kenley was the first technical officer of the Australian Society of Accountants, now CPA Australia, and moved to a full-time role at the Australian Accounting Research Foundation in 1966, where he helped establish the Auditing Standards Board. This server exposes reviewed engines only, and refuses the rest.
 
 ## Tools
 
@@ -30,8 +34,8 @@ Amounts are decimal strings, finite, at most two decimal places, and no greater 
 Python 3.10+. The engines are installed from GitHub because they are not on PyPI.
 
 ```bash
-git clone https://github.com/ryanduguid/aus-accounting-mcp.git
-cd aus-accounting-mcp
+git clone https://github.com/ryanduguid/JohnKenley.git
+cd JohnKenley
 pip install .
 ```
 
