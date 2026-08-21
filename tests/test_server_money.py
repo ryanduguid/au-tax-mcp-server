@@ -12,26 +12,26 @@ def _call_tool(name, arguments):
     return json.loads(contents[0].text)
 
 
-def _call_payday_tool(sg_contribution, total_salary_wages=None):
+def _call_payday_tool(sg_contribution, clearing_house_type=None):
     arguments = {
         "pay_date_iso": "2026-07-07",
         "submission_date_iso": "2026-07-07",
         "sg_contribution": sg_contribution,
     }
-    if total_salary_wages is not None:
-        arguments["total_salary_wages"] = total_salary_wages
+    if clearing_house_type is not None:
+        arguments["clearing_house_type"] = clearing_house_type
 
     return _call_tool("calc_payday_super_deadline", arguments)
 
 
 def test_payday_mcp_tool_preserves_exact_decimal_string_input_and_output():
-    result = _call_payday_tool(
-        "9007199254740993.01",
-        total_salary_wages="10000.00",
-    )
+    result = _call_payday_tool("9007199254740993.01")
 
     assert result["sg_contribution_exact"] == "9007199254740993.01"
-    assert result["sgc_exposure"]["total_liability_exact"] == "0.00"
+    assert result["estimated_receipt_within_usual_period"] is True
+    assert result["compliance_status"] == "NOT_ASSESSED"
+    assert "sgc_exposure" not in result
+    assert "is_compliant" not in result
     assert result["monetary_precision"]["input_mode"] == "exact_decimal_string"
     assert result["monetary_precision"]["input_warning"] is None
     assert "*_exact" in result["monetary_precision"]["output_warning"]
@@ -51,6 +51,31 @@ def test_payday_mcp_tool_rejects_a_non_decimal_string_with_a_field_error():
         ToolError, match="sg_contribution must be a finite decimal value"
     ):
         _call_payday_tool("not-a-number")
+
+
+def test_payday_mcp_tool_parses_the_documented_direct_route_by_value():
+    result = _call_payday_tool("1200.00", clearing_house_type="DIRECT")
+
+    assert result["estimated_fund_receipt"] == "2026-07-08"
+    assert result["estimated_receipt_within_usual_period"] is True
+
+
+@pytest.mark.parametrize("invalid_route", ["DIRECT_PAYMENT", "SBSCH"])
+def test_payday_mcp_tool_rejects_routes_outside_the_public_contract(invalid_route):
+    with pytest.raises(ToolError):
+        _call_payday_tool("1200.00", clearing_house_type=invalid_route)
+
+
+def test_payday_mcp_schema_constrains_routes_and_omits_obsolete_sgc_inputs():
+    tools = asyncio.run(mcp.list_tools())
+    tool = next(
+        candidate for candidate in tools
+        if candidate.name == "calc_payday_super_deadline"
+    )
+    properties = tool.inputSchema["properties"]
+
+    assert properties["clearing_house_type"]["enum"] == ["COMMERCIAL", "DIRECT"]
+    assert "total_salary_wages" not in properties
 
 
 def test_benchmark_mcp_tool_preserves_exact_decimal_strings():
@@ -119,7 +144,6 @@ def test_synthetic_sbr_mcp_tool_preserves_exact_decimal_strings(
         ("get_ato_benchmarks", "rent_expenses"),
         ("get_ato_benchmarks", "motor_vehicle_expenses"),
         ("calc_payday_super_deadline", "sg_contribution"),
-        ("calc_payday_super_deadline", "total_salary_wages"),
         ("calc_div7a_repayment", "loan_principal"),
         ("generate_synthetic_sbr_fixture", "revenue_or_sales"),
     ],

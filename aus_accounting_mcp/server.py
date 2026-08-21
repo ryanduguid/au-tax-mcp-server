@@ -6,7 +6,7 @@ over the Model Context Protocol (MCP).
 
 from datetime import date
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict
+from typing import Any, Dict, Literal
 
 from mcp.server.fastmcp import FastMCP
 
@@ -22,6 +22,7 @@ from .engines.synthetic_sbr import (
 mcp = FastMCP("aus-accounting-mcp")
 
 MoneyInput = str | int | float
+PaydayClearingHouseRoute = Literal["COMMERCIAL", "DIRECT"]
 
 
 def _decimal_input(value: MoneyInput, field_name: str) -> Decimal:
@@ -136,59 +137,44 @@ def calc_payday_super_deadline(
     pay_date_iso: str,
     submission_date_iso: str,
     sg_contribution: MoneyInput,
-    clearing_house_type: str = "COMMERCIAL",
-    total_salary_wages: MoneyInput | None = None,
+    clearing_house_type: PaydayClearingHouseRoute = "COMMERCIAL",
 ) -> Dict[str, Any]:
     """
-    Simulate Payday Super 2026 compliance window (7 business days from payday)
-    and fail closed on late receipt because full post-reform SGC facts are not
-    available to this tool.
+    Estimate clearing-house receipt timing against the Payday Super 2026
+    seven-business-day usual period. This tool does not assess compliance or
+    SGC liability because it does not collect actual receipt, allocation or
+    assessment facts.
     Send monetary values as decimal strings for exact input and use the *_exact
     result fields for exact output. JSON numbers remain supported for existing
     clients and are explicitly marked as a potentially rounded legacy mode.
     """
-    ch_type = ClearingHouseType[clearing_house_type.upper()]
+    ch_type = ClearingHouseType(clearing_house_type)
     p_date = date.fromisoformat(pay_date_iso)
     s_date = date.fromisoformat(submission_date_iso)
 
     sg_contribution_decimal = _decimal_input(sg_contribution, "sg_contribution")
-    total_salary_wages_decimal = (
-        _decimal_input(total_salary_wages, "total_salary_wages")
-        if total_salary_wages is not None
-        else None
-    )
 
     res = simulate_payday_super(
         pay_date=p_date,
         submission_date=s_date,
         sg_contribution=sg_contribution_decimal,
-        total_salary_wages=total_salary_wages_decimal,
         clearing_house_type=ch_type,
     )
 
     return {
         "pay_date": res.pay_date.isoformat(),
-        "statutory_due_date": res.statutory_due_date.isoformat(),
+        "usual_period_end_date": res.usual_period_end_date.isoformat(),
         "clearing_house_submission": res.clearing_house_submission_date.isoformat(),
         "estimated_fund_receipt": res.estimated_fund_receipt_date.isoformat(),
-        "is_compliant": res.is_compliant,
+        "estimated_receipt_within_usual_period": (
+            res.estimated_receipt_within_usual_period
+        ),
         "business_days_from_pay": res.business_days_taken,
         "sg_contribution": float(res.sg_contribution_amount),
         "sg_contribution_exact": _decimal_text(res.sg_contribution_amount),
-        "sgc_exposure": {
-            "shortfall": float(res.potential_sgc_shortfall),
-            "shortfall_exact": _decimal_text(res.potential_sgc_shortfall),
-            "nominal_interest": float(res.nominal_interest_charge),
-            "nominal_interest_exact": _decimal_text(res.nominal_interest_charge),
-            "admin_fee": float(res.admin_fee_charge),
-            "admin_fee_exact": _decimal_text(res.admin_fee_charge),
-            "total_liability": float(res.total_sgc_exposure),
-            "total_liability_exact": _decimal_text(res.total_sgc_exposure),
-        },
-        "monetary_precision": _monetary_precision(
-            sg_contribution, total_salary_wages
-        ),
-        "risk_assessment": res.risk_assessment,
+        "monetary_precision": _monetary_precision(sg_contribution),
+        "compliance_status": res.compliance_status,
+        "compliance_warning": res.compliance_warning,
     }
 
 

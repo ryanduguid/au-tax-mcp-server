@@ -1,7 +1,10 @@
 """
-Payday Super 2026 Clearing House Latency Simulator & SGC Exposure Engine.
-Models the 7 business day statutory window from payday (commencing 1 July 2026)
-and evaluates Superannuation Guarantee Charge (SGC) liabilities under SGAA 1992.
+Payday Super 2026 national usual-period and clearing-house timing estimator.
+
+Models the seven-business-day usual period from payday (commencing 1 July
+2026) and estimates clearing-house receipt timing. It does not collect actual
+fund receipt, eligibility, allocation or assessment facts, and therefore never
+assesses legal compliance or Superannuation Guarantee Charge (SGC) liability.
 
 Calendar and rate provenance (reviewed 21 August 2026):
 
@@ -28,7 +31,6 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
 
 _CALENDAR_VERIFIED_FROM = date(2026, 1, 1)
 _CALENDAR_VERIFIED_UNTIL = date(2026, 12, 31)
@@ -59,28 +61,30 @@ _WHOLE_OF_JURISDICTION_HOLIDAYS_2026 = {
 }
 
 _SG_CHARGE_RATE_2026 = Decimal("0.12")
+_COMPLIANCE_WARNING = (
+    "Timing estimate only. Actual fund receipt, contribution eligibility and "
+    "allocation, assessment and other statutory facts are not collected; no "
+    "compliance or SGC conclusion is made."
+)
 
 
 class ClearingHouseType(str, Enum):
     SBSCH = "SBSCH"                  # Closed permanently on 1 July 2026
     COMMERCIAL = "COMMERCIAL"        # Modern Commercial Clearing House (1-3 days)
-    DIRECT_PAYMENT = "DIRECT"        # Direct SuperStream Gateway (< 1 day)
+    DIRECT = "DIRECT"                # Direct SuperStream Gateway (< 1 day)
 
 
 @dataclass(frozen=True)
 class PaydaySuperSimulationResult:
     pay_date: date
-    statutory_due_date: date
+    usual_period_end_date: date
     clearing_house_submission_date: date
     estimated_fund_receipt_date: date
-    is_compliant: bool
+    estimated_receipt_within_usual_period: bool
     business_days_taken: int
     sg_contribution_amount: Decimal
-    potential_sgc_shortfall: Decimal
-    nominal_interest_charge: Decimal
-    admin_fee_charge: Decimal
-    total_sgc_exposure: Decimal
-    risk_assessment: str
+    compliance_status: str
+    compliance_warning: str
 
 
 def _is_business_day(day: date) -> bool:
@@ -131,59 +135,49 @@ def simulate_payday_super(
     pay_date: date,
     submission_date: date,
     sg_contribution: Decimal,
-    total_salary_wages: Optional[Decimal] = None,
     clearing_house_type: ClearingHouseType = ClearingHouseType.COMMERCIAL,
-    days_in_quarter_prior: int = 45,
-    num_employees: int = 1,
 ) -> PaydaySuperSimulationResult:
     """
-    Simulate Payday Super 2026 compliance window (7 business days from payday).
-    Under Payday Super, contributions must be RECEIVED by the super fund by Day 7.
+    Estimate receipt timing against the 2026 seven-business-day usual period.
 
-    Late SGC exposure is deliberately unsupported. The post-1 July 2026 charge
-    needs contribution receipt and allocation, assessment, GIC/notional
-    earnings, administrative uplift and choice-loading facts that this
-    simulator does not collect.
+    The result always reports compliance as ``NOT_ASSESSED``. An estimated
+    receipt cannot establish actual receipt or allocation and is not an SGC
+    calculation.
     """
     if pay_date < _PAYDAY_SUPER_COMMENCEMENT:
         raise ValueError("Payday Super commences on 1 July 2026")
+    if submission_date < pay_date:
+        raise ValueError("submission date must not be before pay date")
+    if sg_contribution < 0:
+        raise ValueError("sg_contribution must not be negative")
     if clearing_house_type is ClearingHouseType.SBSCH:
         raise ValueError(
             "SBSCH closed on 1 July 2026 and is unavailable for Payday Super"
         )
 
-    # 7 business day statutory window from pay_date
-    statutory_due_date = add_business_days(pay_date, 7)
+    usual_period_end_date = add_business_days(pay_date, 7)
 
     # Clearing house typical latency
     latency_days = {
         ClearingHouseType.SBSCH: 5,
         ClearingHouseType.COMMERCIAL: 2,
-        ClearingHouseType.DIRECT_PAYMENT: 1,
+        ClearingHouseType.DIRECT: 1,
     }[clearing_house_type]
 
     estimated_receipt_date = add_business_days(submission_date, latency_days)
     business_days_from_pay = count_business_days(pay_date, estimated_receipt_date)
-    is_compliant = estimated_receipt_date <= statutory_due_date
+    estimated_within_usual_period = (
+        estimated_receipt_date <= usual_period_end_date
+    )
 
-    if is_compliant:
-        return PaydaySuperSimulationResult(
-            pay_date=pay_date,
-            statutory_due_date=statutory_due_date,
-            clearing_house_submission_date=submission_date,
-            estimated_fund_receipt_date=estimated_receipt_date,
-            is_compliant=True,
-            business_days_taken=business_days_from_pay,
-            sg_contribution_amount=sg_contribution,
-            potential_sgc_shortfall=Decimal("0.00"),
-            nominal_interest_charge=Decimal("0.00"),
-            admin_fee_charge=Decimal("0.00"),
-            total_sgc_exposure=Decimal("0.00"),
-            risk_assessment="COMPLIANT: Estimated fund receipt is within the 7 business day statutory window.",
-        )
-
-    raise ValueError(
-        "Post-1 July 2026 SGC exposure is not modelled because the simulator "
-        "does not collect contribution allocation, assessment, GIC/notional "
-        "earnings, administrative uplift or choice-loading facts"
+    return PaydaySuperSimulationResult(
+        pay_date=pay_date,
+        usual_period_end_date=usual_period_end_date,
+        clearing_house_submission_date=submission_date,
+        estimated_fund_receipt_date=estimated_receipt_date,
+        estimated_receipt_within_usual_period=estimated_within_usual_period,
+        business_days_taken=business_days_from_pay,
+        sg_contribution_amount=sg_contribution,
+        compliance_status="NOT_ASSESSED",
+        compliance_warning=_COMPLIANCE_WARNING,
     )
