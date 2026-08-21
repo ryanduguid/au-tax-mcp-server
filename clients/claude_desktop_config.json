@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "aus-accounting": {
+      "command": "python",
+      "args": ["-m", "aus_accounting_mcp.cli"]
+    }
+  }
+}

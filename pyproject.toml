@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aus-accounting-mcp"
+version = "0.1.0"
+description = "Unified Model Context Protocol (MCP) server for Australian computational accounting, ATO benchmarks, Payday Super, and Division 7A."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    { name = "Ryan Duguid", email = "ryan@duguid.com.au" }
+]
+keywords = [
+    "model-context-protocol",
+    "mcp-server",
+    "australian-tax",
+    "ato-benchmarks",
+    "payday-super",
+    "division-7a",
+    "accounting-ai",
+]
+dependencies = [
+    "mcp>=1.0.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.scripts]
+aus-accounting-mcp = "aus_accounting_mcp.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["aus_accounting_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
