@@ -1,6 +1,6 @@
-# aus-accounting-mcp
+# JohnKenley
 
-[![tests](https://github.com/ryanduguid/aus-accounting-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/ryanduguid/aus-accounting-mcp/actions/workflows/ci.yml)
+[![tests](https://github.com/ryanduguid/JohnKenley/actions/workflows/ci.yml/badge.svg)](https://github.com/ryanduguid/JohnKenley/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Model Context Protocol](https://img.shields.io/badge/MCP-Standard%20Protocol-8A2BE2)](https://modelcontextprotocol.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -12,7 +12,7 @@ MCP facade over reviewed Australian computational accounting engines. Compatible
 
 This server does **not** reimplement tax law. Payday Super and ATO small-business benchmarks are delegated to:
 
-- [payday-super-checker](https://github.com/ryanduguid/payday-super-checker) (`paydaysuper`)
+- [CharlesHenryWickens](https://github.com/ryanduguid/CharlesHenryWickens) (`payday-super-checker`)
 - [RaymondChambers](https://github.com/ryanduguid/RaymondChambers) (`ato-benchmark-compare`)
 
 Division 7A is **refused** until a reviewed engine exists. SBR payloads are **synthetic fixtures**, not lodgments.
@@ -22,7 +22,7 @@ Division 7A is **refused** until a reviewed engine exists. SBR payloads are **sy
 Python 3.10+ and [uv](https://docs.astral.sh/uv/). The engines install from GitHub because they are not on PyPI, so the one-command path is `uvx` from this repository:
 
 ```bash
-uvx --from git+https://github.com/ryanduguid/aus-accounting-mcp aus-accounting-mcp
+uvx --from git+https://github.com/ryanduguid/JohnKenley aus-accounting-mcp
 ```
 
 Clone and `pip install .` still works when you want a local editable tree.
@@ -38,7 +38,7 @@ Clone and `pip install .` still works when you want a local editable tree.
       "command": "uvx",
       "args": [
         "--from",
-        "git+https://github.com/ryanduguid/aus-accounting-mcp",
+        "git+https://github.com/ryanduguid/JohnKenley",
         "aus-accounting-mcp"
       ]
     }
@@ -50,7 +50,7 @@ Ready-made copies live in [`clients/`](clients/).
 
 ### Cursor
 
-[![Add to Cursor](https://img.shields.io/badge/Cursor-Add%20MCP-black)](https://cursor.com/en/install-mcp?name=aus-accounting&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJnaXQraHR0cHM6Ly9naXRodWIuY29tL3J5YW5kdWd1aWQvYXVzLWFjY291bnRpbmctbWNwIiwiYXVzLWFjY291bnRpbmctbWNwIl19)
+[![Add to Cursor](https://img.shields.io/badge/Cursor-Add%20MCP-black)](https://cursor.com/en/install-mcp?name=aus-accounting&config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyItLWZyb20iLCJnaXQraHR0cHM6Ly9naXRodWIuY29tL3J5YW5kdWd1aWQvSm9obktlbmxleSIsImF1cy1hY2NvdW50aW5nLW1jcCJdfQ==)
 
 Or drop the standard config into `~/.cursor/mcp.json`.
 
@@ -61,13 +61,13 @@ Paste the standard config into `claude_desktop_config.json` (`%APPDATA%\Claude\`
 ### Claude Code
 
 ```bash
-claude mcp add aus-accounting -- uvx --from git+https://github.com/ryanduguid/aus-accounting-mcp aus-accounting-mcp
+claude mcp add aus-accounting -- uvx --from git+https://github.com/ryanduguid/JohnKenley aus-accounting-mcp
 ```
 
 ### Codex
 
 ```bash
-codex mcp add aus-accounting -- uvx --from git+https://github.com/ryanduguid/aus-accounting-mcp aus-accounting-mcp
+codex mcp add aus-accounting -- uvx --from git+https://github.com/ryanduguid/JohnKenley aus-accounting-mcp
 ```
 
 ## Tools

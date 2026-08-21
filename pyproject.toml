@@ -36,8 +36,8 @@ dev = [
 aus-accounting-mcp = "aus_accounting_mcp.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/ryanduguid/aus-accounting-mcp"
-Repository = "https://github.com/ryanduguid/aus-accounting-mcp.git"
+Homepage = "https://github.com/ryanduguid/JohnKenley"
+Repository = "https://github.com/ryanduguid/JohnKenley.git"
 
 [tool.hatch.metadata]
 allow-direct-references = true
