@@ -1,0 +1,8 @@
+# Smithery configuration for aus-accounting-mcp
+# https://smithery.ai/docs/config#smitheryyaml
+
+startCommand:
+  type: stdio
+  config:
+    command: aus-accounting-mcp
+    args: []

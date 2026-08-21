@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use this software in research or industry applications, please cite it as below."
+authors:
+  - family-names: Duguid
+    given-names: Ryan
+title: "aus-accounting-mcp: Model Context Protocol Server for Australian Taxation and Computational Accounting"
+version: 0.1.0
+date-released: 2026-08-22
+url: "https://github.com/ryanduguid/JohnKenley"
+repository-code: "https://github.com/ryanduguid/JohnKenley"
+license: MIT
+keywords:
+  - accounting
+  - mcp
+  - model-context-protocol
+  - australian-tax
+  - ato-benchmarks
+  - payday-super
+  - ai-agents
