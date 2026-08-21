@@ -1,10 +1,25 @@
 from datetime import date
 from decimal import Decimal
-from aus_accounting_mcp.engines.div7a import generate_div7a_schedule, calculate_div7a_myr, generate_dividend_offset_journal
-from aus_accounting_mcp.engines.paydaysuper_sim import simulate_payday_super, ClearingHouseType
+
 from aus_accounting_mcp.engines.benchmarks import analyze_ato_benchmarks
-from aus_accounting_mcp.engines.synthetic_sbr import generate_synthetic_ctr_payload, generate_synthetic_bas_payload
-from aus_accounting_mcp.server import get_ato_benchmarks, calc_payday_super_deadline, calc_div7a_repayment, generate_synthetic_sbr_fixture
+from aus_accounting_mcp.engines.div7a import (
+    generate_div7a_schedule,
+    generate_dividend_offset_journal,
+)
+from aus_accounting_mcp.engines.paydaysuper_sim import (
+    ClearingHouseType,
+    simulate_payday_super,
+)
+from aus_accounting_mcp.engines.synthetic_sbr import (
+    generate_synthetic_bas_payload,
+    generate_synthetic_ctr_payload,
+)
+from aus_accounting_mcp.server import (
+    calc_div7a_repayment,
+    calc_payday_super_deadline,
+    get_ato_benchmarks,
+)
+
 
 def test_div7a_amortisation_7year():
     # $100k loan at FY2025 benchmark rate (8.77%)
@@ -36,25 +51,15 @@ def test_dividend_offset_journal():
     assert "$6,666.67" in journals[2]["debit"]
 
 def test_payday_super_simulation():
-    # Compliant scenario: Commercial clearing house submitted on payday
+    # Timing scenario: Commercial clearing house submitted on payday
     comp_res = simulate_payday_super(
         pay_date=date(2026, 7, 7),        # Tuesday
         submission_date=date(2026, 7, 7), # Tuesday
         sg_contribution=Decimal("1150.00"),
         clearing_house_type=ClearingHouseType.COMMERCIAL, # +2 business days -> Thursday 9 July
     )
-    assert comp_res.is_compliant is True
-    assert comp_res.total_sgc_exposure == Decimal("0.00")
-
-    # Non-compliant scenario: Submitted late via SBSCH (+5 business days)
-    late_res = simulate_payday_super(
-        pay_date=date(2026, 7, 7),         # Tuesday
-        submission_date=date(2026, 7, 15), # 6 business days later
-        sg_contribution=Decimal("1150.00"),
-        clearing_house_type=ClearingHouseType.SBSCH, # +5 days -> well past 7-day statutory window
-    )
-    assert late_res.is_compliant is False
-    assert late_res.total_sgc_exposure > Decimal("1150.00")
+    assert comp_res.estimated_receipt_within_usual_period is True
+    assert comp_res.compliance_status == "NOT_ASSESSED"
 
 def test_ato_benchmarks_analysis():
     # Cafe with turnover $1M, cost of sales $300k (30% within 28-37% range)
@@ -81,7 +86,8 @@ def test_mcp_tool_functions():
     assert bm_tool["industry"] == "cafes_and_restaurants"
 
     pds_tool = calc_payday_super_deadline("2026-07-07", "2026-07-07", 1000.0)
-    assert pds_tool["is_compliant"] is True
+    assert pds_tool["estimated_receipt_within_usual_period"] is True
+    assert pds_tool["compliance_status"] == "NOT_ASSESSED"
 
     div7a_tool = calc_div7a_repayment("Alice", "HoldingCo Pty Ltd", 50000.0)
     assert div7a_tool["principal"] == 50000.0

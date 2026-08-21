@@ -4,9 +4,8 @@ Benchmark Interest Rates, and Dividend Offset Journals.
 """
 
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_HALF_UP
-from typing import List, Dict, Optional
-
+from decimal import ROUND_HALF_UP, Decimal, localcontext
+from typing import Dict, List
 
 # ATO Division 7A Benchmark Interest Rates (s 109N(2))
 BENCHMARK_RATES: Dict[int, Decimal] = {
@@ -60,16 +59,16 @@ def calculate_div7a_myr(
     if opening_balance <= Decimal("0.00") or remaining_term_years <= 0:
         return Decimal("0.00")
 
-    i = float(benchmark_rate)
-    l = float(opening_balance)
-    n = remaining_term_years
+    with localcontext() as context:
+        context.prec = max(50, len(opening_balance.as_tuple().digits) + 20)
+        denominator = Decimal("1") - (
+            (Decimal("1") + benchmark_rate) ** (-remaining_term_years)
+        )
+        if denominator <= 0:
+            return Decimal("0.00")
+        myr = (benchmark_rate * opening_balance) / denominator
 
-    denominator = 1.0 - ((1.0 + i) ** (-n))
-    if denominator <= 0.0:
-        return Decimal("0.00")
-
-    myr_float = (i * l) / denominator
-    return Decimal(str(myr_float)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return myr.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def generate_div7a_schedule(
@@ -154,12 +153,12 @@ def generate_dividend_offset_journal(
             "account": f"Division 7A Loan Receivable — {borrower_name}",
             "debit": "$0.00",
             "credit": f"${offset_amount:,.2f}",
-            "description": f"Credit loan account to satisfy MYR offset under s 109E",
+            "description": "Credit loan account to satisfy MYR offset under s 109E",
         },
         {
             "account": "Franking Account (FAB)",
             "debit": f"${franking_credits:,.2f}",
             "credit": "$0.00",
-            "description": f"Franking debit on franked dividend offset (s 205-30 Item 1)",
+            "description": "Franking debit on franked dividend offset (s 205-30 Item 1)",
         },
     ]
