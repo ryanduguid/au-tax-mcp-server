@@ -8,6 +8,8 @@
 
 MCP facade over reviewed Australian computational accounting engines. Compatible with Claude Desktop, Claude Code, Cursor, Codex and Antigravity.
 
+Payday Super is an experimental review (not a compliance determination). Division 7A is **refused** — there is no repayment calculator. SBR payloads are synthetic fixtures.
+
 > [!WARNING]
 > **Not tax advice.** This server returns structured results, refusals, and citations. It does not lodge, and it does not replace a registered agent. See [DISCLAIMER.md](DISCLAIMER.md).
 
