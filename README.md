@@ -1,4 +1,4 @@
-# JohnKenley
+# John Kenley
 
 [![tests](https://github.com/ryanduguid/JohnKenley/actions/workflows/ci.yml/badge.svg)](https://github.com/ryanduguid/JohnKenley/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
