@@ -29,13 +29,14 @@ australian-tax
 claude-code
 codex
 cursor
-division-7a
 mcp
 mcp-server
 model-context-protocol
 payday-super
 tax-prep
 ```
+
+Do not add `division-7a`. The only Div 7A tool is `refuse_div7a`.
 
 Apply with `scripts/publish-github-about.sh` from a session authenticated to
 GitHub. Pin this repository from the profile **Customize your pins** dialog.
