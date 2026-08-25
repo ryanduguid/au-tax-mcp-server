@@ -260,11 +260,33 @@ def test_release_workflows_use_registered_pypi_publisher() -> None:
     publisher = (root / ".github" / "workflows" / "publish-pypi.yml").read_text(
         encoding="utf-8"
     )
+    readme = (root / "README.md").read_text(encoding="utf-8")
 
     assert "workflow_dispatch:" not in release
-    assert "gh-action-pypi-publish" not in release
-    assert "workflow_dispatch:" in publisher
-    assert "gh-action-pypi-publish" in publisher
+    assert release.count("gh-action-pypi-publish") == 0
+    assert "environment: pypi" not in release
+    assert re.search(r"(?mi)^  [^:\n]*(?:pypi|backfill)[^:\n]*:\s*$", release) is None
+    assert '  push:\n    tags:\n      - "v*"' in release
+    assert re.search(r"(?m)^  release:\s*$", release)
+    assert (
+        "uses: ryanduguid/release-policy/.github/workflows/release-python.yml@"
+        in release
+    )
+
+    assert publisher.count("gh-action-pypi-publish") == 1
+    assert (release + publisher).count("gh-action-pypi-publish") == 1
+    assert re.search(r"(?m)^    environment: pypi\s*$", publisher)
+    assert re.search(r"(?m)^      id-token: write\b", publisher)
+    assert "sha256sum --check SHA256SUMS" in publisher
+    assert "  workflow_dispatch:\n    inputs:\n      tag:" in publisher
+    assert re.search(r"(?ms)^      tag:\n.*?^        required: true\s*$", publisher)
+    assert re.search(r"(?ms)^      tag:\n.*?^        type: string\s*$", publisher)
+
+    assert "[CITATION.cff](CITATION.cff)" in readme
+    assert (
+        "[v0.1.5](https://github.com/ryanduguid/au-tax-mcp-server/releases/tag/v0.1.5)"
+        in readme
+    )
 
 
 def test_registry_publisher_is_pinned_and_checksum_verified() -> None:
