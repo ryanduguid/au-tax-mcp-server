@@ -493,13 +493,40 @@ def test_client_snippets_use_uvx_from_pypi() -> None:
     assert "allow-direct-references" not in pyproject
 
 
-def test_current_release_metadata_remains_on_registered_release() -> None:
+def test_current_release_metadata_matches_local_source_release() -> None:
     root = Path(__file__).resolve().parents[1]
     release_notes = (root / "RELEASE_NOTES.md").read_text(encoding="utf-8")
     citation = (root / "CITATION.cff").read_text(encoding="utf-8")
 
-    assert release_notes.startswith("# v0.1.5\n")
-    assert re.search(r"(?m)^version: 0\.1\.5$", citation)
+    assert release_notes.startswith("# v0.1.6\n")
+    assert re.search(r"(?m)^version: 0\.1\.6$", citation)
+
+
+def test_readme_has_stable_proof_anchor_and_mapping() -> None:
+    root = Path(__file__).resolve().parents[1]
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    assert "## 30-second proof\n" in readme
+    assert readme.index("## 30-second proof") < readme.index("## Install")
+    for text in (
+        "![Animated terminal proof of synthetic BAS output and Division 7A refusal](docs/quick-proof.gif)",
+        "uvx --from aus-accounting-mcp aus-accounting-mcp-demo",
+        "[checked text transcript](docs/quick-proof.txt)",
+        "Expected structured success:",
+        "synthetic: true",
+        "not_a_lodgment: true",
+        "Expected structured refusal:",
+        "ERR_POLICY_DIV7A_REFUSED",
+        "not a lodgment",
+        "human review",
+        "au-tax-mcp-server",
+        "aus-accounting-mcp",
+        "aus-accounting-mcp-demo",
+        "io.github.ryanduguid/aus-accounting",
+        "https://pypi.org/project/aus-accounting-mcp/0.1.6/",
+        "https://registry.modelcontextprotocol.io/v0.1/servers/io.github.ryanduguid%2Faus-accounting/versions/0.1.6",
+        "[compatibility.json](compatibility.json)",
+    ):
+        assert text in readme
 
 
 def test_server_metadata_publishes_exact_pypi_release() -> None:
@@ -581,7 +608,7 @@ def test_release_workflows_use_registered_pypi_publisher() -> None:
 
     assert "[CITATION.cff](CITATION.cff)" in readme
     assert (
-        "[v0.1.5](https://github.com/ryanduguid/au-tax-mcp-server/releases/tag/v0.1.5)"
+        "[v0.1.6 release record](https://github.com/ryanduguid/au-tax-mcp-server/releases/tag/v0.1.6)"
         in readme
     )
 
