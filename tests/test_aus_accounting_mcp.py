@@ -5,6 +5,11 @@ import re
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
+
 import pytest
 
 from aus_accounting_mcp.server import (
@@ -14,6 +19,23 @@ from aus_accounting_mcp.server import (
     get_ato_benchmarks,
     list_ato_benchmark_industries,
 )
+
+
+def test_proof_package_surface_is_versioned_and_keeps_stdio_separate() -> None:
+    root = Path(__file__).resolve().parents[1]
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))[
+        "project"
+    ]
+    assert project["name"] == "aus-accounting-mcp"
+    assert project["version"] == "0.1.6"
+    assert project["scripts"] == {
+        "aus-accounting-mcp": "aus_accounting_mcp.cli:main",
+        "aus-accounting-mcp-demo": "aus_accounting_mcp.demo:main",
+    }
+    dev_dependencies = project["optional-dependencies"]["dev"]
+    assert "Pillow==12.3.0" in dev_dependencies
+    assert "twine==6.2.0" in dev_dependencies
+    assert 'tomli>=2.0.1; python_version < "3.11"' in dev_dependencies
 
 
 def _workflow_sources(root: Path) -> dict[str, str]:
@@ -458,7 +480,7 @@ def test_client_snippets_use_uvx_from_pypi() -> None:
     glama = json.loads((root / "glama.json").read_text(encoding="utf-8"))
     assert glama["maintainers"] == ["ryanduguid"]
     pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
-    assert 'version = "0.1.5"' in pyproject
+    assert 'version = "0.1.6"' in pyproject
     assert "uvx from PyPI" in pyproject
     # The engines stay pinned to an exact version, which is what the commit pins
     # used to buy. They cannot be pinned by URL: PyPI rejects a distribution
@@ -471,17 +493,13 @@ def test_client_snippets_use_uvx_from_pypi() -> None:
     assert "allow-direct-references" not in pyproject
 
 
-def test_release_metadata_matches_project_version() -> None:
+def test_current_release_metadata_remains_on_registered_release() -> None:
     root = Path(__file__).resolve().parents[1]
-    pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
-    version_match = re.search(r'(?m)^version = "([^"]+)"$', pyproject)
-    assert version_match is not None
-    version = version_match.group(1)
     release_notes = (root / "RELEASE_NOTES.md").read_text(encoding="utf-8")
     citation = (root / "CITATION.cff").read_text(encoding="utf-8")
 
-    assert release_notes.startswith(f"# v{version}\n")
-    assert re.search(rf"(?m)^version: {re.escape(version)}$", citation)
+    assert release_notes.startswith("# v0.1.5\n")
+    assert re.search(r"(?m)^version: 0\.1\.5$", citation)
 
 
 def test_server_metadata_publishes_exact_pypi_release() -> None:

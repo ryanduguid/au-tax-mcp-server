@@ -1,0 +1,76 @@
+from __future__ import annotations
+
+import json
+
+from aus_accounting_mcp import demo
+
+EXPECTED_PAYLOAD = {
+    "calls": [
+        {
+            "arguments": {
+                "entity_name": "Example Firm Pty Ltd",
+                "form_type": "BAS",
+                "revenue_or_sales": "110000.00",
+            },
+            "result": {
+                "entity": {
+                    "abn": "11 222 333 444",
+                    "name": "Example Firm Pty Ltd",
+                    "quarter_ended": "2025-03-31",
+                },
+                "form_type": "BAS_AU_ACTIVITY_STATEMENT",
+                "gst_labels": {
+                    "1A_gst_on_sales": "10000.00",
+                    "1B_gst_on_purchases": "5000.00",
+                    "G10_capital_purchases": "11000.00",
+                    "G11_non_capital_purchases": "44000.00",
+                    "G1_total_sales": "110000.00",
+                    "net_gst": "5000.00",
+                },
+                "not_a_lodgment": True,
+                "payg_withholding_labels": {
+                    "W1_total_salary_wages": "150000.00",
+                    "W2_amounts_withheld": "37500.00",
+                },
+                "summary": {"total_payable_to_ato": "42500.00"},
+                "synthetic": True,
+            },
+            "tool": "generate_synthetic_sbr_fixture",
+        },
+        {
+            "arguments": {
+                "borrower_name": "Example Borrower",
+                "lender_entity_name": "Example Company Pty Ltd",
+                "loan_principal": "50000.00",
+            },
+            "result": {
+                "available": False,
+                "code": "ERR_POLICY_DIV7A_REFUSED",
+                "ok": False,
+                "reason": (
+                    "Division 7A MYR, benchmark interest and franking-offset "
+                    "journals are not backed by a reviewed computational engine "
+                    "in this server. The previous MCP-local simulator has been "
+                    "removed so agents cannot treat it as statutory output. "
+                    "Wired engines: payday-super-checker and "
+                    "ato-benchmark-compare."
+                ),
+                "reviewed_engine": False,
+            },
+            "tool": "refuse_div7a",
+        },
+    ]
+}
+
+
+def test_demo_payload_uses_real_registered_mcp_tools() -> None:
+    assert demo.demo_payload() == EXPECTED_PAYLOAD
+
+
+def test_demo_json_is_sorted_and_finite() -> None:
+    assert demo.render_demo_json(EXPECTED_PAYLOAD) == json.dumps(
+        EXPECTED_PAYLOAD,
+        indent=2,
+        sort_keys=True,
+        allow_nan=False,
+    )
