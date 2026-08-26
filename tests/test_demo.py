@@ -1,7 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
+import subprocess
+import sys
+
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
 
 from aus_accounting_mcp import demo
 
@@ -82,3 +88,36 @@ def test_checked_quick_proof_transcript_is_current_real_demo() -> None:
     transcript = root / "docs" / "quick-proof.txt"
 
     assert transcript.read_text(encoding="utf-8") == demo.render_transcript()
+
+
+async def _stdio_smoke() -> None:
+    parameters = StdioServerParameters(
+        command=sys.executable,
+        args=["-m", "aus_accounting_mcp.cli"],
+    )
+    arguments = {
+        "borrower_name": "Example Borrower",
+        "lender_entity_name": "Example Company Pty Ltd",
+        "loan_principal": "50000.00",
+    }
+
+    async with stdio_client(parameters) as (
+        read_stream,
+        write_stream,
+    ):
+        async with ClientSession(read_stream, write_stream) as session:
+            await session.initialize()
+            result = await session.call_tool("refuse_div7a", arguments)
+
+    assert result.structured_content["code"] == "ERR_POLICY_DIV7A_REFUSED"
+
+
+def test_stdio_contract_and_demo_entry_point_are_separate() -> None:
+    asyncio.run(_stdio_smoke())
+    completed = subprocess.run(
+        [sys.executable, "-m", "aus_accounting_mcp.demo"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert completed.stdout == demo.render_transcript()
