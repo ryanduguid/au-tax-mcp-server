@@ -497,9 +497,7 @@ def test_client_snippets_use_uvx_from_pypi() -> None:
 
 def test_unreleased_source_metadata_stays_separate_from_published_metadata() -> None:
     root = Path(__file__).resolve().parents[1]
-    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))[
-        "project"
-    ]
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     citation = (root / "CITATION.cff").read_text(encoding="utf-8")
     release_notes = (root / "RELEASE_NOTES.md").read_text(encoding="utf-8")
     server = json.loads((root / "server.json").read_text(encoding="utf-8"))
