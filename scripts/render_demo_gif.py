@@ -16,6 +16,7 @@ LEFT_MARGIN = 40
 TOP_MARGIN = 32
 BOTTOM_MARGIN = 32
 LINE_HEIGHT = 30
+FONT_SIZE = 24
 TOTAL_CENTISECONDS = 3_000
 TOTAL_DURATION_MS = TOTAL_CENTISECONDS * 10
 
@@ -31,7 +32,7 @@ def _durations(frame_count: int) -> list[int]:
 def render_gif(transcript_path: Path, output_path: Path) -> None:
     lines = transcript_path.read_text(encoding="utf-8").splitlines()
     durations = _durations(len(lines))
-    font = ImageFont.load_default(size=24)
+    font = ImageFont.load_default(size=FONT_SIZE)
     visible_lines = (HEIGHT - TOP_MARGIN - BOTTOM_MARGIN) // LINE_HEIGHT
     frames = []
 

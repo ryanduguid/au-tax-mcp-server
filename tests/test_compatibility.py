@@ -33,6 +33,20 @@ def test_compatibility_record_matches_metadata_and_engine_owned_fields() -> None
         ),
         "release": "https://github.com/ryanduguid/au-tax-mcp-server/releases/tag/v0.1.6",
     }
+    assert record["engines"] == [
+        {
+            "distribution": "ato-benchmark-compare",
+            "version": "0.1.4",
+            "repository": "https://github.com/ryanduguid/ato-benchmark-compare",
+            "release": "https://github.com/ryanduguid/ato-benchmark-compare/releases/tag/v0.1.4",
+        },
+        {
+            "distribution": "payday-super-checker",
+            "version": "0.1.2",
+            "repository": "https://github.com/ryanduguid/payday-super-checker",
+            "release": "https://github.com/ryanduguid/payday-super-checker/releases/tag/v0.1.2",
+        },
+    ]
     distribution = record["server"]["distribution"]
     assert importlib.metadata.version(distribution) == "0.1.6"
     requirements = set(importlib.metadata.requires(record["server"]["distribution"]) or [])

@@ -502,7 +502,7 @@ def test_current_release_metadata_matches_local_source_release() -> None:
 
     assert release_notes.startswith("# v0.1.6\n")
     assert re.search(r"(?m)^version: 0\.1\.6$", citation)
-    assert re.search(r"(?m)^date-released: 2026-08-26$", citation)
+    assert not re.search(r"(?m)^date-released:", citation)
 
 
 def test_readme_has_stable_proof_anchor_and_mapping() -> None:
