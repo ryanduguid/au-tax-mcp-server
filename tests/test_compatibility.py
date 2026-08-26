@@ -35,9 +35,7 @@ def test_compatibility_record_matches_metadata_and_engine_owned_fields() -> None
     }
     distribution = record["server"]["distribution"]
     assert importlib.metadata.version(distribution) == "0.1.6"
-    requirements = set(
-        importlib.metadata.requires(record["server"]["distribution"]) or []
-    )
+    requirements = set(importlib.metadata.requires(record["server"]["distribution"]) or [])
     for engine in record["engines"]:
         assert importlib.metadata.version(engine["distribution"]) == engine["version"]
         assert f"{engine['distribution']}=={engine['version']}" in requirements

@@ -25,10 +25,7 @@ def _durations(frame_count: int) -> list[int]:
         raise ValueError("quick-proof transcript must contain at least one line")
 
     centiseconds, remainder = divmod(TOTAL_CENTISECONDS, frame_count)
-    return [
-        (centiseconds + (1 if index < remainder else 0)) * 10
-        for index in range(frame_count)
-    ]
+    return [(centiseconds + (1 if index < remainder else 0)) * 10 for index in range(frame_count)]
 
 
 def render_gif(transcript_path: Path, output_path: Path) -> None:

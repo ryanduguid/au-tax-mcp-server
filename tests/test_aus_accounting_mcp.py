@@ -23,9 +23,7 @@ from aus_accounting_mcp.server import (
 
 def test_proof_package_surface_is_versioned_and_keeps_stdio_separate() -> None:
     root = Path(__file__).resolve().parents[1]
-    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))[
-        "project"
-    ]
+    project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     assert project["name"] == "aus-accounting-mcp"
     assert project["version"] == "0.1.6"
     assert project["scripts"] == {
@@ -36,6 +34,18 @@ def test_proof_package_surface_is_versioned_and_keeps_stdio_separate() -> None:
     assert "Pillow==12.3.0" in dev_dependencies
     assert "twine==6.2.0" in dev_dependencies
     assert 'tomli>=2.0.1; python_version < "3.11"' in dev_dependencies
+
+
+def test_build_backend_is_exactly_pinned_for_reproducible_wheels() -> None:
+    root = Path(__file__).resolve().parents[1]
+    build_system = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))[
+        "build-system"
+    ]
+
+    assert build_system == {
+        "build-backend": "hatchling.build",
+        "requires": ["hatchling==1.29.0"],
+    }
 
 
 def _workflow_sources(root: Path) -> dict[str, str]:
@@ -50,9 +60,7 @@ def _workflow_sources(root: Path) -> dict[str, str]:
 def _yaml_mapping_lines(source: str) -> list[str]:
     mapping_lines: list[str] = []
     block_scalar_indent: int | None = None
-    block_scalar = re.compile(
-        r"^\s*(?:-\s+)?[^:#][^:]*:\s*[|>][+-]?\s*(?:#.*)?$"
-    )
+    block_scalar = re.compile(r"^\s*(?:-\s+)?[^:#][^:]*:\s*[|>][+-]?\s*(?:#.*)?$")
 
     for line in source.splitlines():
         stripped = line.strip()
@@ -107,9 +115,7 @@ def _yaml_block(source: str, key: str, indent: int) -> str | None:
     lines = source.splitlines()
     spaces = " " * indent
     header = re.compile(rf"^{spaces}{re.escape(key)}:\s*(?:#.*)?$")
-    start = next(
-        (index for index, line in enumerate(lines) if header.fullmatch(line)), None
-    )
+    start = next((index for index, line in enumerate(lines) if header.fullmatch(line)), None)
     if start is None:
         return None
 
@@ -171,9 +177,7 @@ def _pypi_publisher_uses(workflows: dict[str, str]) -> list[tuple[str, str]]:
     for filename, source in sorted(workflows.items()):
         for job_name, job in _workflow_jobs(source).items():
             uses.extend(
-                (filename, job_name)
-                for line in _yaml_mapping_lines(job)
-                if action.fullmatch(line)
+                (filename, job_name) for line in _yaml_mapping_lines(job) if action.fullmatch(line)
             )
     return uses
 
@@ -184,8 +188,7 @@ def _assert_registered_pypi_publisher(workflows: dict[str, str]) -> None:
 
     assert "workflow_dispatch:" not in release
     assert not any(
-        re.search(r"pypi|backfill", job_name, re.IGNORECASE)
-        for job_name in release_jobs
+        re.search(r"pypi|backfill", job_name, re.IGNORECASE) for job_name in release_jobs
     ), "release workflow must not contain a PyPI or backfill job"
     assert not any(
         re.fullmatch(r"\s*environment:\s*pypi", line, re.IGNORECASE)
@@ -216,22 +219,21 @@ def _assert_registered_pypi_publisher(workflows: dict[str, str]) -> None:
     publisher = workflows[publisher_file]
     publisher_job = _workflow_jobs(publisher)[publisher_job_name]
     publisher_mapping = "\n".join(_yaml_mapping_lines(publisher_job))
-    assert re.search(
-        r"(?m)^    environment:\s*pypi\s*$", publisher_mapping, re.IGNORECASE
-    ), "publishing job must select environment: pypi"
+    assert re.search(r"(?m)^    environment:\s*pypi\s*$", publisher_mapping, re.IGNORECASE), (
+        "publishing job must select environment: pypi"
+    )
 
     permissions = _yaml_block(publisher_job, "permissions", 4)
     assert permissions is not None, "publishing job must declare job permissions"
-    assert re.search(
-        r"(?m)^      id-token:\s*write\s*(?:#.*)?$", permissions
-    ), "publishing job permissions must grant id-token: write"
+    assert re.search(r"(?m)^      id-token:\s*write\s*(?:#.*)?$", permissions), (
+        "publishing job permissions must grant id-token: write"
+    )
     assert any(
-        "sha256sum --check SHA256SUMS" in script
-        for script in _job_run_scripts(publisher_job)
+        "sha256sum --check SHA256SUMS" in script for script in _job_run_scripts(publisher_job)
     ), "publishing job must verify SHA256SUMS"
-    assert re.search(
-        r"\$\{\{[^}\n]*\binputs\.tag\b[^}\n]*\}\}", publisher_mapping
-    ), "publishing job must consume inputs.tag"
+    assert re.search(r"\$\{\{[^}\n]*\binputs\.tag\b[^}\n]*\}\}", publisher_mapping), (
+        "publishing job must consume inputs.tag"
+    )
 
     dispatch = _yaml_block(publisher, "workflow_dispatch", 2)
     assert dispatch is not None, "publish workflow must allow manual dispatch"
@@ -239,12 +241,12 @@ def _assert_registered_pypi_publisher(workflows: dict[str, str]) -> None:
     assert inputs is not None, "workflow_dispatch must declare inputs"
     tag = _yaml_block(inputs, "tag", 6)
     assert tag is not None, "workflow_dispatch must declare a tag input"
-    assert re.search(
-        r"(?m)^        required:\s*true\s*(?:#.*)?$", tag, re.IGNORECASE
-    ), "workflow_dispatch tag input must be required"
-    assert re.search(
-        r"(?m)^        type:\s*string\s*(?:#.*)?$", tag, re.IGNORECASE
-    ), "workflow_dispatch tag input must be a string"
+    assert re.search(r"(?m)^        required:\s*true\s*(?:#.*)?$", tag, re.IGNORECASE), (
+        "workflow_dispatch tag input must be required"
+    )
+    assert re.search(r"(?m)^        type:\s*string\s*(?:#.*)?$", tag, re.IGNORECASE), (
+        "workflow_dispatch tag input must be a string"
+    )
 
 
 def _valid_pypi_workflow_fixture() -> dict[str, str]:
@@ -616,9 +618,7 @@ def test_release_workflows_use_registered_pypi_publisher() -> None:
 
 def test_registry_publisher_is_pinned_and_checksum_verified() -> None:
     root = Path(__file__).resolve().parents[1]
-    workflow = (root / ".github" / "workflows" / "publish-mcp.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = (root / ".github" / "workflows" / "publish-mcp.yml").read_text(encoding="utf-8")
 
     assert "releases/latest" not in workflow
     assert "/download/v1.8.1/mcp-publisher_linux_amd64.tar.gz" in workflow

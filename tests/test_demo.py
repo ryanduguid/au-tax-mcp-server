@@ -8,6 +8,8 @@ import sys
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from mcp.types import InputRequiredResult
+import pytest
 
 from aus_accounting_mcp import demo
 
@@ -110,6 +112,18 @@ async def _stdio_smoke() -> None:
             result = await session.call_tool("refuse_div7a", arguments)
 
     assert result.structured_content["code"] == "ERR_POLICY_DIV7A_REFUSED"
+
+
+def test_demo_payload_rejects_input_required_mcp_results(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def input_required(*_args: object, **_kwargs: object) -> InputRequiredResult:
+        return InputRequiredResult(request_state="retry-demo-call")
+
+    monkeypatch.setattr(demo.mcp, "call_tool", input_required)
+
+    with pytest.raises(RuntimeError, match="complete MCP tool result"):
+        demo.demo_payload()
 
 
 def test_stdio_contract_and_demo_entry_point_are_separate() -> None:

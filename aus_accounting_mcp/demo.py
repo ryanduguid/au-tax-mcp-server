@@ -6,6 +6,8 @@ import asyncio
 import json
 from typing import Any
 
+from mcp.types import CallToolResult
+
 from aus_accounting_mcp.server import mcp
 
 DEMO_COMMAND = "uvx --from aus-accounting-mcp aus-accounting-mcp-demo"
@@ -16,6 +18,8 @@ async def _call_structured(
     arguments: dict[str, str],
 ) -> dict[str, Any]:
     result = await mcp.call_tool(name, arguments)
+    if not isinstance(result, CallToolResult):
+        raise RuntimeError(f"{name} did not return a complete MCP tool result")
     payload = result.structured_content
     if not isinstance(payload, dict):
         raise RuntimeError(f"{name} did not return structured MCP content")
