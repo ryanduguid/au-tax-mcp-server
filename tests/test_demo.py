@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from aus_accounting_mcp import demo
 
@@ -74,3 +75,10 @@ def test_demo_json_is_sorted_and_finite() -> None:
         sort_keys=True,
         allow_nan=False,
     )
+
+
+def test_checked_quick_proof_transcript_is_current_real_demo() -> None:
+    root = Path(__file__).resolve().parents[1]
+    transcript = root / "docs" / "quick-proof.txt"
+
+    assert transcript.read_text(encoding="utf-8") == demo.render_transcript()
