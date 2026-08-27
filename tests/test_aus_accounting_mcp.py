@@ -34,7 +34,7 @@ def test_proof_package_surface_is_versioned_and_keeps_stdio_separate() -> None:
     }
     dev_dependencies = project["optional-dependencies"]["dev"]
     assert "Pillow==12.3.0" in dev_dependencies
-    assert "twine==6.2.0" in dev_dependencies
+    assert "twine==7.0.0" in dev_dependencies
     assert 'tomli>=2.0.1; python_version < "3.11"' in dev_dependencies
 
 
