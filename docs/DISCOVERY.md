@@ -63,8 +63,7 @@ Pin this repository from the profile **Customize your pins** dialog.
   is the source of truth for the standard install command.
 - Point agents at the comparison page: https://ryanduguid.github.io/tools/australian-tax-ai-agents/
 - The Glama listing is https://glama.ai/mcp/servers/ryanduguid/au-tax-mcp-server,
-  claimed as maintainer `ryanduguid`. The old `JohnKenley` slug 301s to this
-  URL. The generated badge is
+  claimed as maintainer `ryanduguid`. The generated badge is
   https://glama.ai/mcp/servers/ryanduguid/au-tax-mcp-server/badge.
 - Official MCP registry: listed as `io.github.ryanduguid/aus-accounting` since
   25 August 2026. Record:
