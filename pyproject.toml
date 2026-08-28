@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling==1.29.0"]
+requires = ["hatchling==1.32.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -36,7 +36,7 @@ dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.0.0",
     "Pillow==12.3.0",
-    "twine==6.2.0",
+    "twine==7.0.0",
     'tomli>=2.0.1; python_version < "3.11"',
 ]
 
