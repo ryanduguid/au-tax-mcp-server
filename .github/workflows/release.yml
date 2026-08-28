@@ -14,7 +14,7 @@ jobs:
       attestations: write # Record provenance and SBOM attestations for release assets.
       contents: write # Create the draft release, upload assets and publish it.
       id-token: write # Obtain the OIDC identity required to sign attestations.
-    uses: ryanduguid/release-policy/.github/workflows/release-python.yml@3b8a377207cab2c7c808fcc96b66578f4695beea
+    uses: ryanduguid/release-policy/.github/workflows/release-python.yml@64f6ab30011ac3bf075b1a954aba8ab24d37c990
     with:
       version-command: >-
         python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])"
