@@ -373,7 +373,6 @@ def test_ato_benchmarks_use_shipped_dataset() -> None:
         rent="40000.00",
         motor_vehicle="8000.00",
         associated_persons="0",
-        other_income="0",
         w1="120000.00",
     )
     assert payload["ok"] is True
@@ -391,17 +390,15 @@ def test_ato_omitted_buckets_are_not_treated_as_zero() -> None:
         cost_of_sales="270000.00",
     )
     statuses = {row["ratio"]: row["status"] for row in payload["ratios"]}
-    # other_income is omitted here too, and every ratio divides by a denominator
-    # that depends on it, so cost_of_sales_to_turnover is withheld despite its
-    # own bucket being supplied. The bucket assertions at the end of this test
-    # are what still separate a supplied bucket from an omitted one.
-    assert statuses["cost_of_sales_to_turnover"] == "not_supplied"
+    assert statuses["cost_of_sales_to_turnover"] == "within"
     assert statuses["rent_to_turnover"] == "not_supplied"
     assert statuses["total_expenses_to_turnover"] == "not_supplied"
     assert "rent" in payload["omitted_buckets"]
     assert payload["complete_buckets"] is False
     # An omitted bucket reached the engine as a zero, so its total and the
     # figures asserted below are reported as unknown rather than as amounts.
+    # The turnover basis is out of scope here. It also depends on an omitted
+    # other_income and is still published as definite.
     assert payload["bucket_totals"]["rent"] is None
     assert payload["figures"]["total_expenses"] is None
     assert payload["figures"]["total_expenses_for_ratio"] is None
@@ -459,59 +456,16 @@ def test_ato_partial_labour_picture_is_not_supplied() -> None:
 
 
 def test_ato_complete_labour_picture_is_evidenced() -> None:
-    # other_income is supplied so the denominator is established and this test
-    # isolates the labour buckets, which are its subject.
     payload = get_ato_benchmarks(
         industry="Bakeries and hot bread shops",
         turnover="850000.00",
         salary_wages="120000.00",
         contractor_commission="0",
         cost_of_sales_labour="0",
-        other_income="0",
     )
     rows = {row["ratio"]: row for row in payload["ratios"]}
     assert rows["labour_to_turnover"]["status"] != "not_supplied"
     assert rows["labour_to_turnover"]["value"] is not None
-
-
-def test_ato_omitted_other_income_withholds_every_ratio() -> None:
-    # The ATO rule divides by sales, or by total business income once other
-    # income exceeds sales. An omitted other_income reaches the engine as zero,
-    # which picks sales, the smallest denominator the rule can select, so every
-    # ratio built on it is an upper bound rather than an amount. These same
-    # figures read 35.00% "within" against sales and 8.75% "below" once other
-    # income of 300000.00 moves the denominator, so publishing either as
-    # definite states a verdict the figures do not support.
-    omitted = get_ato_benchmarks(
-        industry="Bakeries and hot bread shops",
-        turnover="100000.00",
-        cost_of_sales="35000.00",
-    )
-    statuses = {row["ratio"]: row["status"] for row in omitted["ratios"]}
-    assert set(statuses.values()) == {"not_supplied"}
-    assert any("other_business_income was omitted" in note for note in omitted["notes"])
-
-    # Establishing the figure restores the ratio, and the two candidate
-    # denominators disagree on the verdict.
-    against_sales = get_ato_benchmarks(
-        industry="Bakeries and hot bread shops",
-        turnover="100000.00",
-        cost_of_sales="35000.00",
-        other_income="0",
-    )
-    rows = {row["ratio"]: row for row in against_sales["ratios"]}
-    assert rows["cost_of_sales_to_turnover"]["status"] == "within"
-    assert rows["cost_of_sales_to_turnover"]["percent"] == "35.00%"
-
-    against_total_income = get_ato_benchmarks(
-        industry="Bakeries and hot bread shops",
-        turnover="100000.00",
-        cost_of_sales="35000.00",
-        other_income="300000.00",
-    )
-    rows = {row["ratio"]: row for row in against_total_income["ratios"]}
-    assert rows["cost_of_sales_to_turnover"]["status"] == "below"
-    assert rows["cost_of_sales_to_turnover"]["percent"] == "8.75%"
 
 
 def test_ato_refuses_turnover_only() -> None:

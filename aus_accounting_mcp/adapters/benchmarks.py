@@ -140,19 +140,6 @@ def compare_figures(
         and (w1_amount is None or "associated_persons" in supplied)
     )
 
-    # Every ratio divides by turnover, and the ATO rule picks that denominator
-    # from two candidates: sales, or total business income, which is sales plus
-    # other income. The engine switches to total business income once other
-    # income exceeds sales, so an omitted other_income does not merely leave one
-    # numerator unknown, it leaves the denominator under every ratio unknown.
-    #
-    # Omitting it reaches the engine as zero, which picks sales, the smallest
-    # denominator the rule can select. Every ratio built on it is therefore an
-    # upper bound rather than an amount. Publishing those as definite states a
-    # verdict the figures do not support, so none of them is published without
-    # the income figure.
-    income_evidenced = "other_income" in supplied
-
     ratios = []
     for row in payload["ratios"]:
         if row["ratio"] == "total_expenses_to_turnover":
@@ -165,7 +152,7 @@ def compare_figures(
                 (source == "w1" and w1_amount is not None) or source in supplied
                 for source in sources
             )
-        if evidenced and income_evidenced:
+        if evidenced:
             ratios.append(row)
             continue
         ratios.append(
@@ -187,8 +174,14 @@ def compare_figures(
     # "w1" rides along in omitted but is an activity statement label, not a
     # bucket.
     #
-    # sales_of_goods_and_services stays as it is. The caller supplies it, so it
-    # is the one income figure this payload can state.
+    # The list below is what this function establishes, and it stops short of the
+    # turnover basis. The engine picks the denominator from sales and total
+    # business income, which is sales plus other income, so an omitted
+    # other_income can change which base the ATO rule selects, and with it every
+    # ratio, its band and its verdict. Those are still published as definite.
+    # Closing that gap would make other_income effectively required for any
+    # output at all, which changes the contract rather than fixing a defect, so
+    # it is tracked as its own change and deliberately not done here.
     for name in omitted:
         if name in payload["bucket_totals"]:
             payload["bucket_totals"][name] = None
@@ -210,13 +203,6 @@ def compare_figures(
         notes.append(
             "These buckets were omitted, not evidenced as zero, so their ratios "
             f"are not_supplied: {', '.join(omitted)}."
-        )
-    if not income_evidenced:
-        notes.append(
-            "other_business_income was omitted. The ATO rule divides by sales, or "
-            "by total business income once other income exceeds sales, so every "
-            "ratio is not_supplied until that figure is established. Pass 0 only "
-            "when the operator established the business had no other income."
         )
 
     payload.update(
