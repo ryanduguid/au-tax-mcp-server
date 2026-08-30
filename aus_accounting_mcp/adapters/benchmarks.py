@@ -117,17 +117,30 @@ def compare_figures(
         omitted.append("w1")
     expense_complete = all(name in supplied for name in EXPENSE_FIELDS)
 
+    # Labour sums several buckets, and an omitted bucket is not evidenced as
+    # zero, so a partial labour picture must not present as a definite ratio.
+    #
+    # associated_persons is required only when W1 is supplied, and that
+    # asymmetry is deliberate rather than an oversight. The engine rebuilds the
+    # return's salary and wages label by adding associates back, then deducts
+    # them once at the end, so on the salary path the bucket cancels out of the
+    # labour figure and an omitted one cannot move the ratio. W1 replaces that
+    # rebuilt label, which leaves the deduction without its matching addition,
+    # and there an omitted bucket does reach the engine as a definite zero.
+    # Requiring it on both paths would decline a ratio the engine computes
+    # correctly without it.
+    labour_evidenced = (
+        ("salary_wages" in supplied or w1_amount is not None)
+        and all(name in supplied for name in ("contractor_commission", "cost_of_sales_labour"))
+        and (w1_amount is None or "associated_persons" in supplied)
+    )
+
     ratios = []
     for row in payload["ratios"]:
         if row["ratio"] == "total_expenses_to_turnover":
             evidenced = all(name in supplied for name in EXPENSE_FIELDS)
         elif row["ratio"] == "labour_to_turnover":
-            # Labour sums several buckets, and an omitted bucket is not evidenced
-            # as zero, so a partial labour picture must not present as a definite
-            # ratio. W1 substitutes for salary and wages under the ATO rule.
-            evidenced = ("salary_wages" in supplied or w1_amount is not None) and all(
-                name in supplied for name in ("contractor_commission", "cost_of_sales_labour")
-            )
+            evidenced = labour_evidenced
         else:
             sources = RATIO_SOURCES.get(row["ratio"], ())
             evidenced = any(
@@ -149,6 +162,26 @@ def compare_figures(
                 "is_key_ratio": row["is_key_ratio"],
             }
         )
+
+    # The engine needs a figure for every bucket, so an omitted bucket reaches it
+    # as zero. That zero is not evidence, so neither the bucket total nor any
+    # figure derived from it is published as a definite amount. "w1" rides along
+    # in omitted but is an activity statement label, not a bucket.
+    for name in omitted:
+        if name in payload["bucket_totals"]:
+            payload["bucket_totals"][name] = None
+    if not expense_complete:
+        payload["figures"]["total_expenses"] = None
+        payload["figures"]["total_expenses_for_ratio"] = None
+    if not labour_evidenced:
+        payload["figures"]["labour"] = None
+    if "associated_persons" not in supplied:
+        payload["figures"]["payments_to_associated_persons"] = None
+    if "other_income" not in supplied:
+        payload["figures"]["total_business_income"] = None
+        payload["figures"]["other_business_income"] = None
+    if "cost_of_sales" not in supplied:
+        payload["figures"]["cost_of_sales_for_ratio"] = None
 
     notes = list(payload["notes"])
     if omitted:
