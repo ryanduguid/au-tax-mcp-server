@@ -126,28 +126,38 @@ def compare_figures(
     # asymmetry is deliberate rather than an oversight. The engine rebuilds the
     # return's salary and wages label by adding associates back, then deducts
     # them once at the end, so on the salary path the bucket cancels out of the
-    # labour figure and an omitted one cannot move the ratio. W1 replaces that
-    # rebuilt label, which leaves the deduction without its matching addition,
-    # and there an omitted bucket does reach the engine as a definite zero.
-    # Requiring it on both paths would decline a ratio the engine computes
-    # correctly without it.
+    # labour figure and an omitted one cannot move the ratio. When W1 is greater
+    # it replaces that rebuilt label, which leaves the deduction without its
+    # matching addition, and there an omitted bucket does reach the engine as a
+    # definite zero. Requiring it on both paths would decline a ratio the engine
+    # computes correctly without it.
+    #
+    # W1 does not stand in for salary_wages either, which is why the first clause
+    # is an "and" rather than an "or". The engine takes the greater of W1 and the
+    # rebuilt label, so with salary_wages omitted nobody can say which side wins,
+    # and the labour the engine returns is only a lower bound.
     labour_evidenced = (
-        ("salary_wages" in supplied or w1_amount is not None)
+        "salary_wages" in supplied
         and all(name in supplied for name in ("contractor_commission", "cost_of_sales_labour"))
         and (w1_amount is None or "associated_persons" in supplied)
     )
 
-    # Every ratio is a percentage of turnover, and the ATO picks that denominator
-    # by reading both income buckets: it is the sales of goods and services
-    # figure unless that is zero or less than half of total business income, in
-    # which case total business income is used instead. An omitted other_income
-    # reaches the engine as zero, which makes total business income equal sales
-    # and puts the fallback permanently out of reach, so the engine can only ever
-    # select sales and nobody has established that sales is the right base. The
-    # denominator, the turnover band it falls in and every ratio computed on it
-    # therefore stay unevidenced until the bucket is supplied. An explicit 0 is
-    # evidence and leaves all of them definite.
-    denominator_evidenced = "other_income" in supplied
+    # Every ratio divides by turnover, and the ATO rule picks that denominator
+    # from two candidates: sales, or total business income, which is sales plus
+    # other income. The engine switches to total business income once other
+    # income exceeds sales, so an omitted other_income does not merely leave one
+    # numerator unknown, it leaves the denominator under every ratio unknown.
+    #
+    # Omitting it reaches the engine as zero, which picks sales, the smallest
+    # denominator the rule can select. Every ratio built on it is therefore an
+    # upper bound rather than an amount. Publishing those as definite states a
+    # verdict the figures do not support, so none of them is published without
+    # the income figure. An explicit 0 is evidence and leaves them definite.
+    #
+    # The same goes for everything else the denominator decides: the turnover
+    # figure, the basis that selected it, the band it falls in, the published
+    # range for that band, and the engine's own notes that quote it.
+    income_evidenced = "other_income" in supplied
 
     ratios = []
     for row in payload["ratios"]:
@@ -161,7 +171,7 @@ def compare_figures(
                 (source == "w1" and w1_amount is not None) or source in supplied
                 for source in sources
             )
-        if evidenced and denominator_evidenced:
+        if evidenced and income_evidenced:
             ratios.append(row)
             continue
         ratios.append(
@@ -172,17 +182,21 @@ def compare_figures(
                 "percent": None,
                 # The published range is the one for the selected turnover band,
                 # so it is only as established as the denominator that chose it.
-                "benchmark_min": row["benchmark_min"] if denominator_evidenced else None,
-                "benchmark_max": row["benchmark_max"] if denominator_evidenced else None,
+                "benchmark_min": row["benchmark_min"] if income_evidenced else None,
+                "benchmark_max": row["benchmark_max"] if income_evidenced else None,
                 "status": "not_supplied",
                 "is_key_ratio": row["is_key_ratio"],
             }
         )
 
     # The engine needs a figure for every bucket, so an omitted bucket reaches it
-    # as zero. That zero is not evidence, so neither the bucket total nor any
-    # figure derived from it is published as a definite amount. "w1" rides along
-    # in omitted but is an activity statement label, not a bucket.
+    # as zero. That zero is not evidence, so the bucket total and each figure
+    # withheld below are reported as unknown rather than as definite amounts.
+    # "w1" rides along in omitted but is an activity statement label, not a
+    # bucket.
+    #
+    # sales_of_goods_and_services stays as it is. The caller supplies it, so it
+    # is the one income figure this payload can state.
     for name in omitted:
         if name in payload["bucket_totals"]:
             payload["bucket_totals"][name] = None
@@ -193,7 +207,7 @@ def compare_figures(
         payload["figures"]["labour"] = None
     if "associated_persons" not in supplied:
         payload["figures"]["payments_to_associated_persons"] = None
-    if not denominator_evidenced:
+    if not income_evidenced:
         payload["figures"]["total_business_income"] = None
         payload["figures"]["other_business_income"] = None
         # The denominator, the ATO rule that selected it and the band it falls
@@ -206,7 +220,7 @@ def compare_figures(
         payload["figures"]["cost_of_sales_for_ratio"] = None
 
     notes = list(payload["notes"])
-    if not denominator_evidenced:
+    if not income_evidenced:
         # The engine's own notes quote the turnover it was handed, and one of
         # them concludes from that figure that the ATO benchmarks do not apply
         # at all. That is the same unevidenced denominator carried in prose, and
@@ -222,16 +236,15 @@ def compare_figures(
             "These buckets were omitted, not evidenced as zero, so their ratios "
             f"are not_supplied: {', '.join(omitted)}."
         )
-    if not denominator_evidenced:
+    if not income_evidenced:
         notes.append(
-            "other_income was not supplied, so no ratio is reported. The ATO takes "
-            "turnover from sales of goods and services unless that is zero or less "
-            "than half of total business income, in which case total business "
-            "income is used instead, so an unsupplied other_income leaves the "
-            "denominator, the turnover band and every ratio computed on them "
-            "unestablished. Any note that quoted that turnover has been withheld "
-            "for the same reason. Supply other_income to compare; use 0 only "
-            "where the operator established there is none."
+            "other_business_income was omitted. The ATO rule divides by sales, or "
+            "by total business income once other income exceeds sales, so every "
+            "ratio is not_supplied until that figure is established. The turnover "
+            "figure, the basis that selected it, the turnover band, the published "
+            "ranges and any note quoting that turnover are withheld for the same "
+            "reason. Pass 0 only when the operator established the business had "
+            "no other income."
         )
 
     payload.update(
