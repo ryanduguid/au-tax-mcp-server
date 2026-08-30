@@ -41,7 +41,7 @@ Division 7A is **refused** until a reviewed engine exists. SBR payloads are **sy
 
 ## 30-second proof
 
-![Animated terminal proof of synthetic BAS output and Division 7A refusal](docs/quick-proof.gif)
+![Static terminal proof of synthetic BAS output and Division 7A refusal](docs/quick-proof.webp)
 
 **Unreleased source:** from a repository checkout, run the fabricated
 demonstration without starting the stdio server:
@@ -50,7 +50,7 @@ demonstration without starting the stdio server:
 uv run --locked aus-accounting-mcp-demo
 ```
 
-The [checked text transcript](docs/quick-proof.txt) is the accessible source of truth for the animation. Its registered MCP calls return a synthetic BAS fixture with synthetic true and not_a_lodgment true, then an intentional Division 7A refusal with ERR_POLICY_DIV7A_REFUSED.
+The [checked text transcript](docs/quick-proof.txt) is the accessible source of truth for the image. Its registered MCP calls return a synthetic BAS fixture with synthetic true and not_a_lodgment true, then an intentional Division 7A refusal with ERR_POLICY_DIV7A_REFUSED.
 
 Expected structured success:
 
@@ -71,6 +71,12 @@ reviewed_engine: false
 
 The example is fabricated, is not a lodgment, is not tax advice, and requires human review before any consequential accounting action. It neither uses client data nor contacts external services.
 
+### Asset provenance
+
+| Asset | Purpose | Source | Licence | Creation | SHA-256 | Refresh trigger |
+|---|---|---|---|---|---|---|
+| `docs/quick-proof.webp` | Static terminal summary of the two checked demonstration outcomes | `docs/quick-proof.txt`, emitted by `aus-accounting-mcp-demo` | MIT | `uv run --locked python scripts/render_demo_image.py docs/quick-proof.txt docs/quick-proof.webp` with Pillow 12.3.0 | `1b551c09f59bd5ac236e11debd22de96fe2edc98d2ce9b6c9b1e721810829077` | Regenerate when the transcript, demo output, render constants or pinned Pillow version changes |
+
 Name mapping: public name Aus Accounting MCP; repository aus-accounting-mcp; Python distribution aus-accounting-mcp; stdio MCP executable aus-accounting-mcp; demonstration executable aus-accounting-mcp-demo; MCP Registry identity io.github.ryanduguid/aus-accounting.
 
 Canonical published release and compatibility references: [CI](https://github.com/ryanduguid/aus-accounting-mcp/actions/workflows/ci.yml), [v0.1.5 release](https://github.com/ryanduguid/aus-accounting-mcp/releases/tag/v0.1.5), [PyPI 0.1.5](https://pypi.org/project/aus-accounting-mcp/0.1.5/), [MCP Registry 0.1.5](https://registry.modelcontextprotocol.io/v0.1/servers/io.github.ryanduguid%2Faus-accounting/versions/0.1.5), and [compatibility.json](compatibility.json). Treat a version as published only after its target resolves and matches the compatibility record. The record links engine maintained source and release; runtime law_content_date and source remain engine-owned.
@@ -87,7 +93,7 @@ published provenance is the [v0.1.5 release record](https://github.com/ryandugui
 uvx aus-accounting-mcp
 ```
 
-Clone and `pip install .` still works when you want a local editable tree.
+Clone and `pip install -e .` still works when you want a local editable tree.
 
 ## Client integration
 
@@ -140,7 +146,7 @@ codex mcp add aus-accounting -- uvx aus-accounting-mcp
 | `refuse_div7a` | Returns a refusal. No reviewed Div 7A engine is wired | none |
 | `generate_synthetic_sbr_fixture` | Synthetic CTR/BAS for agent tests (`synthetic: true`) | local fixture |
 
-`calc_payday_super_deadline` requires `as_at`. It does not invent clearing-house latency and cannot confirm LCR 2026/1 transition allocation. A remittance date alone cannot produce `ON_TIME`. Omitted ATO expense buckets are `not_supplied`, not zero.
+`calc_payday_super_deadline` requires `as_at`. It does not invent clearing-house latency and cannot confirm LCR 2026/1 transition allocation. A remittance date alone cannot produce `ON_TIME`. Omitted ATO expense buckets are `not_supplied`, not zero. Every ATO ratio divides by turnover, which the ATO rule takes from sales or from total business income, so omitting `other_income` leaves every ratio `not_supplied` until you establish that figure; pass `0` where you have established there is none. Withholding covers the engine's prose as well as the structured fields: a `notes` or `checks_to_make` entry that states an amount resting on an omitted bucket is withheld with the fields it belongs to, and `notes` says so.
 
 Amounts are decimal strings, finite, at most two decimal places, and no greater than AUD 1,000,000,000,000.00. Dates are ISO-8601. Payday Super uses payday-super-checker's national SGAA 1992 s 6(1) calendar.
 
