@@ -2,7 +2,8 @@
 
 No ATO ratios are hardcoded here. Figures are bucket totals; the engine
 applies QC 37143 turnover and labour rules and the shipped dataset.
-Omitted buckets are not treated as evidenced zeros.
+Omitted buckets are not treated as evidenced zeros. The turnover rule reads
+other_income to choose the ratio denominator, so no ratio is reported without it.
 """
 
 from __future__ import annotations
@@ -135,6 +136,18 @@ def compare_figures(
         and (w1_amount is None or "associated_persons" in supplied)
     )
 
+    # Every ratio is a percentage of turnover, and the ATO picks that denominator
+    # by reading both income buckets: it is the sales of goods and services
+    # figure unless that is zero or less than half of total business income, in
+    # which case total business income is used instead. An omitted other_income
+    # reaches the engine as zero, which makes total business income equal sales
+    # and puts the fallback permanently out of reach, so the engine can only ever
+    # select sales and nobody has established that sales is the right base. The
+    # denominator, the turnover band it falls in and every ratio computed on it
+    # therefore stay unevidenced until the bucket is supplied. An explicit 0 is
+    # evidence and leaves all of them definite.
+    denominator_evidenced = "other_income" in supplied
+
     ratios = []
     for row in payload["ratios"]:
         if row["ratio"] == "total_expenses_to_turnover":
@@ -147,7 +160,7 @@ def compare_figures(
                 (source == "w1" and w1_amount is not None) or source in supplied
                 for source in sources
             )
-        if evidenced:
+        if evidenced and denominator_evidenced:
             ratios.append(row)
             continue
         ratios.append(
@@ -156,8 +169,10 @@ def compare_figures(
                 "label": row["label"],
                 "value": None,
                 "percent": None,
-                "benchmark_min": row["benchmark_min"],
-                "benchmark_max": row["benchmark_max"],
+                # The published range is the one for the selected turnover band,
+                # so it is only as established as the denominator that chose it.
+                "benchmark_min": row["benchmark_min"] if denominator_evidenced else None,
+                "benchmark_max": row["benchmark_max"] if denominator_evidenced else None,
                 "status": "not_supplied",
                 "is_key_ratio": row["is_key_ratio"],
             }
@@ -177,9 +192,15 @@ def compare_figures(
         payload["figures"]["labour"] = None
     if "associated_persons" not in supplied:
         payload["figures"]["payments_to_associated_persons"] = None
-    if "other_income" not in supplied:
+    if not denominator_evidenced:
         payload["figures"]["total_business_income"] = None
         payload["figures"]["other_business_income"] = None
+        # The denominator, the ATO rule that selected it and the band it falls
+        # in are all downstream of the same unsupplied bucket. The sales figure
+        # the operator did supply stays readable at figures and bucket_totals.
+        payload["turnover"] = None
+        payload["turnover_basis"] = None
+        payload["turnover_band"] = None
     if "cost_of_sales" not in supplied:
         payload["figures"]["cost_of_sales_for_ratio"] = None
 
@@ -188,6 +209,17 @@ def compare_figures(
         notes.append(
             "These buckets were omitted, not evidenced as zero, so their ratios "
             f"are not_supplied: {', '.join(omitted)}."
+        )
+    if not denominator_evidenced:
+        notes.append(
+            "other_income was not supplied, so no ratio is reported. The ATO takes "
+            "turnover from sales of goods and services unless that is zero or less "
+            "than half of total business income, in which case total business "
+            "income is used instead, so an unsupplied other_income leaves the "
+            "denominator, the turnover band and every ratio computed on them "
+            "unestablished, including any turnover figure quoted in these notes. "
+            "Supply other_income to compare; use 0 only where the operator "
+            "established there is none."
         )
 
     payload.update(
