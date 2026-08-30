@@ -124,13 +124,18 @@ def compare_figures(
     # asymmetry is deliberate rather than an oversight. The engine rebuilds the
     # return's salary and wages label by adding associates back, then deducts
     # them once at the end, so on the salary path the bucket cancels out of the
-    # labour figure and an omitted one cannot move the ratio. W1 replaces that
-    # rebuilt label, which leaves the deduction without its matching addition,
-    # and there an omitted bucket does reach the engine as a definite zero.
-    # Requiring it on both paths would decline a ratio the engine computes
-    # correctly without it.
+    # labour figure and an omitted one cannot move the ratio. When W1 is greater
+    # it replaces that rebuilt label, which leaves the deduction without its
+    # matching addition, and there an omitted bucket does reach the engine as a
+    # definite zero. Requiring it on both paths would decline a ratio the engine
+    # computes correctly without it.
+    #
+    # W1 does not stand in for salary_wages either, which is why the first clause
+    # is an "and" rather than an "or". The engine takes the greater of W1 and the
+    # rebuilt label, so with salary_wages omitted nobody can say which side wins,
+    # and the labour the engine returns is only a lower bound.
     labour_evidenced = (
-        ("salary_wages" in supplied or w1_amount is not None)
+        "salary_wages" in supplied
         and all(name in supplied for name in ("contractor_commission", "cost_of_sales_labour"))
         and (w1_amount is None or "associated_persons" in supplied)
     )
@@ -164,9 +169,19 @@ def compare_figures(
         )
 
     # The engine needs a figure for every bucket, so an omitted bucket reaches it
-    # as zero. That zero is not evidence, so neither the bucket total nor any
-    # figure derived from it is published as a definite amount. "w1" rides along
-    # in omitted but is an activity statement label, not a bucket.
+    # as zero. That zero is not evidence, so the bucket total and each figure
+    # withheld below are reported as unknown rather than as definite amounts.
+    # "w1" rides along in omitted but is an activity statement label, not a
+    # bucket.
+    #
+    # The list below is what this function establishes, and it stops short of the
+    # turnover basis. The engine picks the denominator from sales and total
+    # business income, which is sales plus other income, so an omitted
+    # other_income can change which base the ATO rule selects, and with it every
+    # ratio, its band and its verdict. Those are still published as definite.
+    # Closing that gap would make other_income effectively required for any
+    # output at all, which changes the contract rather than fixing a defect, so
+    # it is tracked as its own change and deliberately not done here.
     for name in omitted:
         if name in payload["bucket_totals"]:
             payload["bucket_totals"][name] = None
