@@ -493,6 +493,35 @@ def test_ato_omitted_other_income_leaves_every_ratio_not_supplied() -> None:
     assert payload["complete_buckets"] is True
 
 
+def test_ato_omitted_other_income_withholds_notes_that_quote_turnover() -> None:
+    # Sales below the lowest published band make the engine conclude, from a
+    # denominator it was handed rather than given, that the ATO benchmarks do
+    # not apply to this business at all. Nulling the structured fields while
+    # publishing that sentence would leave the same unevidenced denominator in
+    # prose, so the note is withheld with them.
+    figures = {
+        "industry": "Bakeries and hot bread shops",
+        "turnover": "50000.00",
+        "cost_of_sales": "15000.00",
+    }
+    omitted = get_ato_benchmarks(**figures)
+    assert not any("50,000.00" in note for note in omitted["notes"])
+    assert not any("do not apply" in note for note in omitted["notes"])
+    assert any("has been withheld" in note for note in omitted["notes"])
+
+    # It would have been the wrong conclusion. The same expenses with the bucket
+    # supplied put this business inside a published band.
+    supplied = get_ato_benchmarks(**figures, other_income="500000.00")
+    assert supplied["turnover"] == "550000.00"
+    assert supplied["turnover_band"]["band"] == "medium"
+
+    # An evidenced nil keeps the engine's note, because there the figure it
+    # quotes is one the operator established.
+    nil = get_ato_benchmarks(**figures, other_income="0")
+    assert nil["turnover_band"] is None
+    assert any("below the lowest published range" in note for note in nil["notes"])
+
+
 def test_ato_w1_without_associated_persons_is_not_supplied() -> None:
     # The engine computes labour as W1 less payments to associated persons plus
     # contractor commission, so an omitted associates bucket taints the ratio.

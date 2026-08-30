@@ -14,6 +14,7 @@ from typing import Any
 from atobenchmark import __version__ as BENCHMARK_VERSION
 from atobenchmark.dataset import DatasetError, load
 from atobenchmark.mapping import BUCKETS
+from atobenchmark.money import money
 from atobenchmark.ratios import RatioError, compute
 from atobenchmark.report import DISCLAIMER, compare, to_dict
 
@@ -205,6 +206,17 @@ def compare_figures(
         payload["figures"]["cost_of_sales_for_ratio"] = None
 
     notes = list(payload["notes"])
+    if not denominator_evidenced:
+        # The engine's own notes quote the turnover it was handed, and one of
+        # them concludes from that figure that the ATO benchmarks do not apply
+        # at all. That is the same unevidenced denominator carried in prose, and
+        # it can be flatly wrong: the business may well fall in a published band
+        # once the missing income is counted. So a note quoting the amount is
+        # withheld rather than published beside the fields nulled above.
+        # Matching the rendered figure catches every such note without depending
+        # on the engine's wording.
+        quoted_turnover = money(figures.turnover)
+        notes = [note for note in notes if quoted_turnover not in note]
     if omitted:
         notes.append(
             "These buckets were omitted, not evidenced as zero, so their ratios "
@@ -217,9 +229,9 @@ def compare_figures(
             "than half of total business income, in which case total business "
             "income is used instead, so an unsupplied other_income leaves the "
             "denominator, the turnover band and every ratio computed on them "
-            "unestablished, including any turnover figure quoted in these notes. "
-            "Supply other_income to compare; use 0 only where the operator "
-            "established there is none."
+            "unestablished. Any note that quoted that turnover has been withheld "
+            "for the same reason. Supply other_income to compare; use 0 only "
+            "where the operator established there is none."
         )
 
     payload.update(
