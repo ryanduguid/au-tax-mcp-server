@@ -21,7 +21,7 @@ keywords = [
     "accounting-ai",
 ]
 dependencies = [
-    "mcp>=2.0.0,<3",
+    "mcp>=2.1.1,<3",
     # Exact pins, same intent as the commit pins these replace. PyPI rejects a
     # distribution whose metadata carries a direct URL reference, so a git pin
     # here makes the package unpublishable.
