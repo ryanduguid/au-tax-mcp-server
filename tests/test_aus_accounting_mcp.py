@@ -2,6 +2,7 @@ import base64
 import importlib
 import json
 import re
+from decimal import Decimal
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -11,6 +12,9 @@ except ModuleNotFoundError:
     import tomli as tomllib
 
 import pytest
+
+from atobenchmark.mapping import BUCKETS
+from atobenchmark.ratios import compute
 
 from aus_accounting_mcp.server import (
     refuse_div7a,
@@ -365,6 +369,9 @@ def test_ato_benchmarks_use_shipped_dataset() -> None:
     payload = get_ato_benchmarks(
         industry="Bakeries and hot bread shops",
         turnover="850000.00",
+        # An explicit zero is evidence, so the ATO turnover rule is settled and
+        # the ratios are definite. Omitting it is what makes them not_supplied.
+        other_income="0",
         cost_of_sales="270000.00",
         cost_of_sales_labour="0",
         other_expense="437000.00",
@@ -379,6 +386,8 @@ def test_ato_benchmarks_use_shipped_dataset() -> None:
     assert payload["business_type"] == "Bakeries and hot bread shops"
     assert payload["complete_buckets"] is True
     assert payload["source"]["publisher"]
+    assert payload["turnover"] == "850000.00"
+    assert payload["turnover_basis"] == "sales of goods and services"
     statuses = {row["ratio"]: row["status"] for row in payload["ratios"]}
     assert statuses["cost_of_sales_to_turnover"] == "within"
 
@@ -387,20 +396,356 @@ def test_ato_omitted_buckets_are_not_treated_as_zero() -> None:
     payload = get_ato_benchmarks(
         industry="Bakeries and hot bread shops",
         turnover="850000.00",
+        other_income="0",
         cost_of_sales="270000.00",
     )
     statuses = {row["ratio"]: row["status"] for row in payload["ratios"]}
+    # other_income is supplied as an evidenced zero so that the denominator is
+    # settled and this test keeps isolating its own subject: a supplied bucket
+    # produces a ratio, an omitted one does not. Withholding every ratio when
+    # other_income is omitted is covered by the other_income tests below.
     assert statuses["cost_of_sales_to_turnover"] == "within"
     assert statuses["rent_to_turnover"] == "not_supplied"
     assert statuses["total_expenses_to_turnover"] == "not_supplied"
     assert "rent" in payload["omitted_buckets"]
     assert payload["complete_buckets"] is False
+    # An omitted bucket reached the engine as a zero, so its total and the
+    # figures asserted below are reported as unknown rather than as amounts.
+    assert payload["bucket_totals"]["rent"] is None
+    assert payload["figures"]["total_expenses"] is None
+    assert payload["figures"]["total_expenses_for_ratio"] is None
+    assert payload["figures"]["labour"] is None
+    assert payload["figures"]["payments_to_associated_persons"] is None
+    # A supplied bucket is still evidenced, and an explicit zero for other income
+    # settles the income side, so the denominator and the figures behind it stay
+    # definite. Omitting it is covered by the other_income tests below.
+    assert payload["bucket_totals"]["cost_of_sales"] == "270000.00"
+    assert payload["figures"]["cost_of_sales_for_ratio"] == "270000.00"
+    assert payload["figures"]["total_business_income"] == "850000.00"
+    assert payload["figures"]["other_business_income"] == "0"
+
+
+def _bakery_with_other_income(other_income: str | None) -> dict:
+    """Sales of $400,000 against other income of $500,000.
+
+    Other income above sales is exactly what moves the ATO denominator off the
+    sales label and onto total business income, so this pair of figures sits on
+    either side of the fallback an omitted bucket would hide.
+    """
+    figures = {
+        "industry": "Bakeries and hot bread shops",
+        "turnover": "400000.00",
+        "cost_of_sales": "120000.00",
+        "cost_of_sales_labour": "0",
+        "salary_wages": "90000.00",
+        "contractor_commission": "0",
+        "associated_persons": "0",
+        "rent": "30000.00",
+        "motor_vehicle": "6000.00",
+        "other_expense": "100000.00",
+    }
+    if other_income is not None:
+        figures["other_income"] = other_income
+    return get_ato_benchmarks(**figures)
+
+
+def test_ato_other_income_can_move_the_turnover_band() -> None:
+    # test_ato_omitted_other_income_withholds_every_ratio shows the denominator
+    # moving a ratio within one band. It also moves the band itself, and with it
+    # the published ATO range a business is judged against, which is why a
+    # withheld row cannot carry a benchmark range either. Here the same expenses
+    # sit above the range on one denominator and below it on the other.
+    nil = _bakery_with_other_income("0")
+    assert nil["turnover"] == "400000.00"
+    assert nil["turnover_basis"] == "sales of goods and services"
+    assert nil["turnover_band"]["band"] == "low"
+    nil_rows = {row["ratio"]: row for row in nil["ratios"]}
+    assert nil_rows["cost_of_sales_to_turnover"]["value"] == "0.3000"
+    assert nil_rows["total_expenses_to_turnover"]["status"] == "above"
+
+    crossed = _bakery_with_other_income("500000.00")
+    assert crossed["turnover"] == "900000.00"
+    assert crossed["turnover_basis"] == "total business income"
+    assert crossed["turnover_band"]["band"] == "high"
+    crossed_rows = {row["ratio"]: row for row in crossed["ratios"]}
+    assert crossed_rows["cost_of_sales_to_turnover"]["value"] == "0.1333"
+    # Same expenses, opposite finding against the ATO range.
+    assert crossed_rows["total_expenses_to_turnover"]["status"] == "below"
+    assert (
+        crossed_rows["total_expenses_to_turnover"]["benchmark_min"]
+        != nil_rows["total_expenses_to_turnover"]["benchmark_min"]
+    )
+
+
+def test_ato_omitted_other_income_withholds_the_turnover_band_and_ranges() -> None:
+    # test_ato_omitted_other_income_withholds_every_ratio covers the ratios.
+    # This covers everything else the same denominator decides, which would
+    # otherwise be published as definite beside those not_supplied rows.
+    payload = _bakery_with_other_income(None)
+    assert payload["turnover"] is None
+    assert payload["turnover_basis"] is None
+    assert payload["turnover_band"] is None
+    assert payload["figures"]["total_business_income"] is None
+    assert payload["figures"]["other_business_income"] is None
+    for row in payload["ratios"]:
+        assert row["status"] == "not_supplied", row["ratio"]
+        assert row["value"] is None
+        assert row["percent"] is None
+        # The range belongs to a turnover band that was never established.
+        assert row["benchmark_min"] is None
+        assert row["benchmark_max"] is None
+    assert "other_income" in payload["omitted_buckets"]
+    assert any("are withheld for the same reason" in note for note in payload["notes"])
+    # The buckets the operator did supply are still reported as supplied.
+    assert payload["figures"]["sales_of_goods_and_services"] == "400000.00"
+    assert payload["bucket_totals"]["cost_of_sales"] == "120000.00"
+    assert payload["complete_buckets"] is True
+
+
+def test_ato_omitted_other_income_withholds_notes_that_quote_turnover() -> None:
+    # Sales below the lowest published band make the engine conclude, from a
+    # denominator it was handed rather than given, that the ATO benchmarks do
+    # not apply to this business at all. Nulling the structured fields while
+    # publishing that sentence would leave the same unevidenced denominator in
+    # prose, so the note is withheld with them.
+    figures = {
+        "industry": "Bakeries and hot bread shops",
+        "turnover": "50000.00",
+        "cost_of_sales": "15000.00",
+    }
+    omitted = get_ato_benchmarks(**figures)
+    assert not any("50,000.00" in note for note in omitted["notes"])
+    assert not any("do not apply" in note for note in omitted["notes"])
+    assert any("are withheld for the same reason" in note for note in omitted["notes"])
+
+    # It would have been the wrong conclusion. The same expenses with the bucket
+    # supplied put this business inside a published band.
+    supplied = get_ato_benchmarks(**figures, other_income="500000.00")
+    assert supplied["turnover"] == "550000.00"
+    assert supplied["turnover_band"]["band"] == "medium"
+
+    # An evidenced nil keeps the engine's note, because there the figure it
+    # quotes is one the operator established.
+    nil = get_ato_benchmarks(**figures, other_income="0")
+    assert nil["turnover_band"] is None
+    assert any("below the lowest published range" in note for note in nil["notes"])
+
+
+def test_ato_w1_without_associated_persons_is_not_supplied() -> None:
+    # The engine computes labour as W1 less payments to associated persons plus
+    # contractor commission, so an omitted associates bucket taints the ratio.
+    payload = get_ato_benchmarks(
+        industry="Bakeries and hot bread shops",
+        turnover="850000.00",
+        # Supplied so the labour rule is what decides this ratio, not the
+        # separate other_income gate on the denominator.
+        other_income="0",
+        salary_wages="120000.00",
+        contractor_commission="0",
+        cost_of_sales_labour="0",
+        w1="200000.00",
+    )
+    statuses = {row["ratio"]: row["status"] for row in payload["ratios"]}
+    assert statuses["labour_to_turnover"] == "not_supplied"
+
+
+def test_ato_w1_does_not_substitute_for_salary_wages() -> None:
+    # The engine takes the greater of W1 and the rebuilt salary and wages label,
+    # so with salary_wages omitted nobody knows which side wins and the labour it
+    # returns is only a lower bound. Publishing that as an amount would contradict
+    # the same payload, which reports the salary_wages bucket as unknown.
+    payload = get_ato_benchmarks(
+        industry="Bakeries and hot bread shops",
+        turnover="850000.00",
+        contractor_commission="0",
+        cost_of_sales_labour="0",
+        associated_persons="0",
+        w1="200000.00",
+    )
+    assert payload["bucket_totals"]["salary_wages"] is None
+    assert payload["figures"]["labour"] is None
+    statuses = {row["ratio"]: row["status"] for row in payload["ratios"]}
+    assert statuses["labour_to_turnover"] == "not_supplied"
+
+
+def _bakery_with_w1(**buckets: str) -> dict:
+    """W1 of $200,000 against a salary and wages label built from the buckets passed.
+
+    other_income is an evidenced zero so the denominator is settled and these
+    tests isolate the labour buckets, which are their subject.
+    """
+    figures = {
+        "industry": "Bakeries and hot bread shops",
+        "turnover": "850000.00",
+        "other_income": "0",
+        "w1": "200000.00",
+    }
+    figures.update(buckets)
+    return get_ato_benchmarks(**figures)
+
+
+def test_ato_omitted_salary_wages_withholds_checks_that_quote_the_label() -> None:
+    # The engine's checks quote the figures it was handed. Where W1 beats the
+    # rebuilt salary and wages label it states that label as a definite amount
+    # and concludes from it that W1 is the figure used in the labour ratio. That
+    # is the same unevidenced bucket the payload reports as unknown two keys
+    # away, carried in prose, so it is withheld with the figures.
+    omitted = _bakery_with_w1(
+        contractor_commission="0", cost_of_sales_labour="0", associated_persons="0"
+    )
+    assert omitted["bucket_totals"]["salary_wages"] is None
+    assert omitted["figures"]["labour"] is None
+    assert not any("salary and wages label" in check for check in omitted["checks_to_make"])
+    assert not any("is used in the labour ratio" in check for check in omitted["checks_to_make"])
+    # Withheld rather than silently dropped.
+    assert any("check(s) to make were withheld" in note for note in omitted["notes"])
+
+    # The omission reverses the check rather than moving the amount it quotes.
+    # $500,000 of salary and wages puts the label above W1 and the engine does
+    # not raise it at all, so publishing it above was not a shifted figure.
+    supplied = _bakery_with_w1(
+        contractor_commission="0",
+        cost_of_sales_labour="0",
+        associated_persons="0",
+        salary_wages="500000.00",
+    )
+    assert supplied["bucket_totals"]["salary_wages"] == "500000.00"
+    assert not any("salary and wages label" in check for check in supplied["checks_to_make"])
+
+    # With every bucket behind the label evidenced, the check is the engine's to
+    # make and is published. Withholding here would withhold a check the figures
+    # support, and the other buckets this payload omits do not bear on it.
+    evidenced = _bakery_with_w1(
+        contractor_commission="0",
+        cost_of_sales_labour="0",
+        associated_persons="0",
+        salary_wages="0",
+    )
+    assert evidenced["figures"]["labour"] == "200000.00"
+    assert any("is used in the labour ratio" in check for check in evidenced["checks_to_make"])
+    assert not any("check(s) to make were withheld" in note for note in evidenced["notes"])
+
+
+def test_ato_withheld_check_is_matched_on_the_quoted_amount() -> None:
+    # The label is the mapped salary and wages plus cost of sales labour plus
+    # associates, so an omitted salary_wages leaves the engine quoting the other
+    # two rather than a zero. Matching the rendered figure catches that; matching
+    # the omitted bucket's own total, which is always a zero, would not.
+    #
+    # The supplied rent is the negative of that same label, and the engine raises
+    # a check of its own quoting it. A figure runs left through a leading minus,
+    # so -500.00 is not a quotation of 500.00 and that check is the operator's to
+    # read: withholding is on the amount, not on there being an omitted bucket
+    # somewhere in the payload.
+    payload = _bakery_with_w1(
+        contractor_commission="0",
+        cost_of_sales_labour="500.00",
+        associated_persons="0",
+        rent="-500.00",
+    )
+    assert payload["bucket_totals"]["salary_wages"] is None
+    assert payload["bucket_totals"]["rent"] == "-500.00"
+    assert not any("salary and wages label" in check for check in payload["checks_to_make"])
+    assert not any("is used in the labour ratio" in check for check in payload["checks_to_make"])
+    assert any(
+        "The rent total is negative (-500.00)" in check
+        for check in payload["checks_to_make"]
+    )
+    assert any(
+        "No payments to associated persons were mapped" in check
+        for check in payload["checks_to_make"]
+    )
+
+
+def test_ato_a_collision_with_the_label_does_not_withhold_an_evidenced_check() -> None:
+    # A sign-flipped export makes the label negative, and it can land on the same
+    # amount as a bucket the operator supplied. Here an omitted salary_wages
+    # leaves a label of -500.00, which is also the rent total and the cost of
+    # sales labour total, both published. The engine raises a negative-bucket
+    # check for each, quoting an amount this payload states, so both are the
+    # operator's to read. Withholding on the label amount alone would eat them
+    # and then report a reason that was not true of either.
+    figures = {
+        "industry": "Bakeries and hot bread shops",
+        "turnover": "850000.00",
+        "other_income": "0",
+        "cost_of_sales_labour": "-500.00",
+        "associated_persons": "0",
+        "rent": "-500.00",
+    }
+
+    # Without W1 the engine never renders the label at all, so there is nothing
+    # for a check to be resting on and nothing to withhold.
+    without_w1 = get_ato_benchmarks(**figures)
+    assert without_w1["bucket_totals"]["rent"] == "-500.00"
+    assert without_w1["bucket_totals"]["cost_of_sales_labour"] == "-500.00"
+    assert any(
+        "The rent total is negative (-500.00)" in check
+        for check in without_w1["checks_to_make"]
+    )
+    assert any(
+        "The cost_of_sales_labour total is negative (-500.00)" in check
+        for check in without_w1["checks_to_make"]
+    )
+    assert not any("check(s) to make were withheld" in note for note in without_w1["notes"])
+
+    # With W1 the label check does appear and is withheld, and the two checks
+    # that merely share its amount are not: the label check quotes W1 as well.
+    with_w1 = get_ato_benchmarks(**figures, w1="0")
+    assert not any("salary and wages label" in check for check in with_w1["checks_to_make"])
+    assert any(
+        "The rent total is negative (-500.00)" in check
+        for check in with_w1["checks_to_make"]
+    )
+    assert any(
+        "The cost_of_sales_labour total is negative (-500.00)" in check
+        for check in with_w1["checks_to_make"]
+    )
+    assert any("1 check(s) to make were withheld" in note for note in with_w1["notes"])
+
+
+def test_ato_labour_gate_declines_a_ratio_the_engine_computes_correctly() -> None:
+    # The gate is on W1 being supplied, not on W1 winning. Where W1 loses to the
+    # label, associates cancel out of the labour figure exactly as they do with
+    # no W1 at all, and the engine returns the same amount either way.
+    def labour(associated_persons: str) -> str:
+        totals = {bucket: Decimal("0") for bucket in BUCKETS}
+        totals.update(
+            {
+                "turnover": Decimal("850000.00"),
+                "salary_wages": Decimal("80000"),
+                "cost_of_sales_labour": Decimal("50000"),
+                "contractor_commission": Decimal("0"),
+                "associated_persons": Decimal(associated_persons),
+            }
+        )
+        return str(compute(totals, Decimal("50000")).labour)
+
+    assert labour("0") == labour("50000") == "130000"
+
+    # So this is a ratio the engine computes correctly without the bucket, and
+    # the adapter declines it anyway. Which of the two figures wins is decided by
+    # the label, and the label cannot be built without associates, so the
+    # harmless case is not distinguishable from the tainted one without it.
+    payload = get_ato_benchmarks(
+        industry="Bakeries and hot bread shops",
+        turnover="850000.00",
+        other_income="0",
+        salary_wages="80000.00",
+        cost_of_sales_labour="50000.00",
+        contractor_commission="0",
+        w1="50000.00",
+    )
+    statuses = {row["ratio"]: row["status"] for row in payload["ratios"]}
+    assert statuses["labour_to_turnover"] == "not_supplied"
+    assert payload["figures"]["labour"] is None
 
 
 def test_ato_partial_labour_picture_is_not_supplied() -> None:
     payload = get_ato_benchmarks(
         industry="Bakeries and hot bread shops",
         turnover="850000.00",
+        other_income="0",
         salary_wages="120000.00",
     )
     statuses = {row["ratio"]: row["status"] for row in payload["ratios"]}
@@ -408,9 +753,12 @@ def test_ato_partial_labour_picture_is_not_supplied() -> None:
 
 
 def test_ato_complete_labour_picture_is_evidenced() -> None:
+    # other_income is supplied so the denominator is established and this test
+    # isolates the labour buckets, which are its subject.
     payload = get_ato_benchmarks(
         industry="Bakeries and hot bread shops",
         turnover="850000.00",
+        other_income="0",
         salary_wages="120000.00",
         contractor_commission="0",
         cost_of_sales_labour="0",
@@ -418,6 +766,46 @@ def test_ato_complete_labour_picture_is_evidenced() -> None:
     rows = {row["ratio"]: row for row in payload["ratios"]}
     assert rows["labour_to_turnover"]["status"] != "not_supplied"
     assert rows["labour_to_turnover"]["value"] is not None
+
+
+def test_ato_omitted_other_income_withholds_every_ratio() -> None:
+    # The ATO rule divides by sales, or by total business income once other
+    # income exceeds sales. An omitted other_income reaches the engine as zero,
+    # which picks sales, the smallest denominator the rule can select, so every
+    # ratio built on it is an upper bound rather than an amount. These same
+    # figures read 35.00% "within" against sales and 8.75% "below" once other
+    # income of 300000.00 moves the denominator, so publishing either as
+    # definite states a verdict the figures do not support.
+    omitted = get_ato_benchmarks(
+        industry="Bakeries and hot bread shops",
+        turnover="100000.00",
+        cost_of_sales="35000.00",
+    )
+    statuses = {row["ratio"]: row["status"] for row in omitted["ratios"]}
+    assert set(statuses.values()) == {"not_supplied"}
+    assert any("other_business_income was omitted" in note for note in omitted["notes"])
+
+    # Establishing the figure restores the ratio, and the two candidate
+    # denominators disagree on the verdict.
+    against_sales = get_ato_benchmarks(
+        industry="Bakeries and hot bread shops",
+        turnover="100000.00",
+        cost_of_sales="35000.00",
+        other_income="0",
+    )
+    rows = {row["ratio"]: row for row in against_sales["ratios"]}
+    assert rows["cost_of_sales_to_turnover"]["status"] == "within"
+    assert rows["cost_of_sales_to_turnover"]["percent"] == "35.00%"
+
+    against_total_income = get_ato_benchmarks(
+        industry="Bakeries and hot bread shops",
+        turnover="100000.00",
+        cost_of_sales="35000.00",
+        other_income="300000.00",
+    )
+    rows = {row["ratio"]: row for row in against_total_income["ratios"]}
+    assert rows["cost_of_sales_to_turnover"]["status"] == "below"
+    assert rows["cost_of_sales_to_turnover"]["percent"] == "8.75%"
 
 
 def test_ato_refuses_turnover_only() -> None:
