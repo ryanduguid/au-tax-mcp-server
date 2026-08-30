@@ -657,6 +657,53 @@ def test_ato_withheld_check_is_matched_on_the_quoted_amount() -> None:
     )
 
 
+def test_ato_a_collision_with_the_label_does_not_withhold_an_evidenced_check() -> None:
+    # A sign-flipped export makes the label negative, and it can land on the same
+    # amount as a bucket the operator supplied. Here an omitted salary_wages
+    # leaves a label of -500.00, which is also the rent total and the cost of
+    # sales labour total, both published. The engine raises a negative-bucket
+    # check for each, quoting an amount this payload states, so both are the
+    # operator's to read. Withholding on the label amount alone would eat them
+    # and then report a reason that was not true of either.
+    figures = {
+        "industry": "Bakeries and hot bread shops",
+        "turnover": "850000.00",
+        "other_income": "0",
+        "cost_of_sales_labour": "-500.00",
+        "associated_persons": "0",
+        "rent": "-500.00",
+    }
+
+    # Without W1 the engine never renders the label at all, so there is nothing
+    # for a check to be resting on and nothing to withhold.
+    without_w1 = get_ato_benchmarks(**figures)
+    assert without_w1["bucket_totals"]["rent"] == "-500.00"
+    assert without_w1["bucket_totals"]["cost_of_sales_labour"] == "-500.00"
+    assert any(
+        "The rent total is negative (-500.00)" in check
+        for check in without_w1["checks_to_make"]
+    )
+    assert any(
+        "The cost_of_sales_labour total is negative (-500.00)" in check
+        for check in without_w1["checks_to_make"]
+    )
+    assert not any("check(s) to make were withheld" in note for note in without_w1["notes"])
+
+    # With W1 the label check does appear and is withheld, and the two checks
+    # that merely share its amount are not: the label check quotes W1 as well.
+    with_w1 = get_ato_benchmarks(**figures, w1="0")
+    assert not any("salary and wages label" in check for check in with_w1["checks_to_make"])
+    assert any(
+        "The rent total is negative (-500.00)" in check
+        for check in with_w1["checks_to_make"]
+    )
+    assert any(
+        "The cost_of_sales_labour total is negative (-500.00)" in check
+        for check in with_w1["checks_to_make"]
+    )
+    assert any("1 check(s) to make were withheld" in note for note in with_w1["notes"])
+
+
 def test_ato_labour_gate_declines_a_ratio_the_engine_computes_correctly() -> None:
     # The gate is on W1 being supplied, not on W1 winning. Where W1 loses to the
     # label, associates cancel out of the labour figure exactly as they do with

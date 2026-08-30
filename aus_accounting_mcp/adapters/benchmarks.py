@@ -291,25 +291,30 @@ def compare_figures(
     # engine's to make even where the labour ratio it mentions is withheld.
     #
     # Matching the rendered amount rather than the wording means the engine can
-    # reword this check, or raise another quoting the same label, without
-    # reopening the hole. Checks quoting no withheld figure are left alone: the
-    # negative-bucket check quotes a bucket the operator supplied, and the rest
-    # report what was passed and ask for it to be confirmed.
+    # reword the check without reopening the hole. The match is on the pair of
+    # amounts rather than the label alone, because the label alone is a number
+    # like any other and an evidenced check can carry the same one. The engine
+    # quotes the label only where it compares W1 against it, so a check resting
+    # on the label quotes both figures; the negative-bucket check quotes one
+    # amount, the operator's own bucket total, and survives a collision with the
+    # label rather than being withheld with a false reason. For the same reason
+    # nothing is withheld where no W1 was supplied: the engine cannot reach the
+    # line that renders the label, so no check can be resting on it.
     salary_label_evidenced = all(
         name in supplied
         for name in ("salary_wages", "cost_of_sales_labour", "associated_persons")
     )
-    unevidenced_amounts: list[str] = []
-    if not salary_label_evidenced:
+    checks_to_make = list(payload["checks_to_make"])
+    if w1_amount is not None and not salary_label_evidenced:
         salary_and_wages_label = (
             figures.totals["salary_wages"] + figures.totals["cost_of_sales_labour"]
         ) + figures.totals["associated_persons"]
-        unevidenced_amounts.append(str(salary_and_wages_label))
-    checks_to_make = [
-        check
-        for check in payload["checks_to_make"]
-        if not any(_quotes_amount(check, amount) for amount in unevidenced_amounts)
-    ]
+        compared = (str(w1_amount), str(salary_and_wages_label))
+        checks_to_make = [
+            check
+            for check in checks_to_make
+            if not all(_quotes_amount(check, amount) for amount in compared)
+        ]
     withheld_checks = len(payload["checks_to_make"]) - len(checks_to_make)
     if withheld_checks:
         notes.append(
