@@ -21,7 +21,7 @@ consistent with the artifacts that actually exist.
 
 The demo must call real registered MCP tools with fabricated inputs and show both the
 synthetic BAS result and Division 7A refusal. `docs/quick-proof.txt` is the accessible
-source of truth; `docs/quick-proof.gif` is derived media. Regenerate and review both when
+source of truth; `docs/quick-proof.webp` is derived media. Regenerate and review both when
 demo output changes, then run the supplementary demo and media checks in `AGENTS.md`.
 
 ## Release handoff

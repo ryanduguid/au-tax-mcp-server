@@ -33,9 +33,10 @@ These checks are not CI gates. Use them when their affected artifact changes:
 uv sync --locked --extra dev
 uv run --locked --extra dev python -m build
 uv run --locked aus-accounting-mcp-demo
+uv run --locked python scripts/render_demo_image.py docs/quick-proof.txt docs/quick-proof.webp
 uv run --locked --extra dev pytest -q tests/test_demo.py tests/test_demo_media.py tests/test_compatibility.py tests/test_engine_versions.py
 ```
 
 Keep `docs/quick-proof.txt` as the accessible source of truth for
-`docs/quick-proof.gif`. Route publication through the existing release workflows; do not
+`docs/quick-proof.webp`. Route publication through the existing release workflows; do not
 publish, tag, or change public metadata without explicit approval.

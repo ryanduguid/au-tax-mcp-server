@@ -24,10 +24,16 @@ translate and serialise, but must not reimplement their law or datasets.
   for human review before consequential accounting action.
 """
 
+MEDIA_COMMAND = (
+    "uv run --locked python scripts/render_demo_image.py "
+    "docs/quick-proof.txt docs/quick-proof.webp"
+)
+
 SUPPLEMENTARY_COMMANDS = [
     "uv sync --locked --extra dev",
     "uv run --locked --extra dev python -m build",
     "uv run --locked aus-accounting-mcp-demo",
+    MEDIA_COMMAND,
     (
         "uv run --locked --extra dev pytest -q tests/test_demo.py "
         "tests/test_demo_media.py tests/test_compatibility.py tests/test_engine_versions.py"
@@ -95,7 +101,9 @@ def test_agents_pins_repository_backed_supplementary_commands_as_non_ci() -> Non
     assert '"Pillow==12.3.0"' in pyproject
     assert 'aus-accounting-mcp-demo = "aus_accounting_mcp.demo:main"' in pyproject
     assert "uv run --locked aus-accounting-mcp-demo" in readme
+    assert f"`{MEDIA_COMMAND}`" in readme
     for path in (
+        "docs/quick-proof.webp",
         "tests/test_demo.py",
         "tests/test_demo_media.py",
         "tests/test_compatibility.py",
@@ -109,7 +117,7 @@ def test_agents_pins_repository_backed_supplementary_commands_as_non_ci() -> Non
         These checks are not CI gates. Use them when their affected artifact changes:
 
         Keep `docs/quick-proof.txt` as the accessible source of truth for
-        `docs/quick-proof.gif`. Route publication through the existing release workflows;
+        `docs/quick-proof.webp`. Route publication through the existing release workflows;
         do not publish, tag, or change public metadata without explicit approval.
         """
     )
@@ -129,7 +137,7 @@ def test_runtime_entry_points_and_contribution_scope_are_explicit() -> None:
         "compatibility.json",
         "server.json",
         "docs/quick-proof.txt",
-        "docs/quick-proof.gif",
+        "docs/quick-proof.webp",
         "release workflow",
         "Publish to PyPI",
         "Publish to MCP Registry",
