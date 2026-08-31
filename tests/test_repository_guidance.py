@@ -25,7 +25,7 @@ translate and serialise, but must not reimplement their law or datasets.
 """
 
 MEDIA_COMMAND = (
-    "uv run --locked python scripts/render_demo_image.py "
+    "uv run --locked --extra dev python scripts/render_demo_image.py "
     "docs/quick-proof.txt docs/quick-proof.webp"
 )
 

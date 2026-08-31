@@ -33,7 +33,7 @@ These checks are not CI gates. Use them when their affected artifact changes:
 uv sync --locked --extra dev
 uv run --locked --extra dev python -m build
 uv run --locked aus-accounting-mcp-demo
-uv run --locked python scripts/render_demo_image.py docs/quick-proof.txt docs/quick-proof.webp
+uv run --locked --extra dev python scripts/render_demo_image.py docs/quick-proof.txt docs/quick-proof.webp
 uv run --locked --extra dev pytest -q tests/test_demo.py tests/test_demo_media.py tests/test_compatibility.py tests/test_engine_versions.py
 ```
 
