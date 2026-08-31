@@ -20,8 +20,6 @@ or datasets.
 
 These are the current commands in `.github/workflows/ci.yml`:
 
-The workflow installs uv 0.12.0 with the pinned `astral-sh/setup-uv` action.
-
 ```bash
 uv run --locked --extra dev pytest -q
 uv run --locked --extra dev ruff check aus_accounting_mcp tests
