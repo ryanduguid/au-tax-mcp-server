@@ -21,7 +21,7 @@ commit. The imported subtree must have the same tree id as the source commit.
 |---|---|---|---|---|---|---|
 | `https://github.com/ryanduguid/ato-benchmark-compare.git` | `d290c8b77d5cc47346d7a41e843642c2c7908748` | `2405cd169c5731298851f96d7c992715c49c3c6f` | `29468715ce198635375c944c865c3b15578b84f3ac9945fb53a9731d77dea189` | v0.1.5 (2026-08-31) | `packages/ato-benchmark-compare/` | imported: squash `965739bf4348b74987bd8541a996599bdaeba53b`, merge `f4289747daa83a79ee318d4405fd45c3ea9d6cd8` |
 | `https://github.com/ryanduguid/payday-super-checker.git` | `5ffe1d48ef4262bb6aecb34122b314fec7c437c6` | `89631a8992225fd11ca637e726968838667d5846` | `3bc9819cc9230709630fac33f1276944a744d3310d23d005c84b429f6291368e` | v0.1.2 prerelease (2026-08-23) | `packages/payday-super-checker/` | imported: squash `3fa513e9e2bd8d7a19021a92a12fc5e734e15c8b`, merge `89ffab414954ac93edbfa14f1a9a5e7dfc392a50` |
-| `https://github.com/ryanduguid/div7a-loan-review.git` | `753e7d630cba0f3b4d5b97f29141c685fc47dd09` | `0d65c3cac7799ffd83f835223bed0253bbf6b212` | `baea80653779c9270c70751a2418b278bcadef1ee7cc10b1eccdf2113e163680` | v0.1.0 (2026-08-31) | `packages/div7a-loan-review/` | pending |
+| `https://github.com/ryanduguid/div7a-loan-review.git` | `753e7d630cba0f3b4d5b97f29141c685fc47dd09` | `0d65c3cac7799ffd83f835223bed0253bbf6b212` | `baea80653779c9270c70751a2418b278bcadef1ee7cc10b1eccdf2113e163680` | v0.1.0 (2026-08-31) | `packages/div7a-loan-review/` | imported: squash `4de3b6f092c2499485efb4b3ce128f03f3d5ee35`, merge `18b889ed7db11219bf7b82bf4db51a43cac526d2` |
 | `https://github.com/ryanduguid/TheExchequerTally.git` | `1e89aebc9611f1e87114290dc13f3434ac6f5d88` | `a6c50adda17a8ef97f2f439bb64da5761c712880` | `b099a7cddaf55c14ad042445d28b507a3a697e0e47c217a44c508967b08e20ca` | v0.1.2 (2026-08-22) | `packages/the-exchequer-tally/` | pending |
 | `https://github.com/ryanduguid/SolomonsSword.git` | `af988a45f777559116ec3e59d5abdb0ee7771f90` | `66422d183637058701546a7a1d7ac8aa1254206b` | `b66aa69e69e1589c7864d4d01b60e5f5314c36a5eac344a3749b4faf4cdf4a3e` | v0.1.2 (2026-08-22) | `packages/solomons-sword/` | pending |
 | `https://github.com/ryanduguid/TheWIPTally.git` | `f6dcdd702d9344745e95174c8783c0b77b5f9dd2` | `578a0419d959801c36ba429969c96d2585f7ab93` | `9549f0ce2f08063cfc5a39ce1febe630dcb0ebbf60a70bcabef3a3e484c1548a` | none | `packages/the-wip-tally/` | pending |
@@ -89,3 +89,25 @@ commit. The imported subtree must have the same tree id as the source commit.
   counts as changed. Measured 97 percent branch-inclusive over both whole files (`assess.py`
   97.1 percent, `report.py` 97.2 percent; `coverage report` 98 percent each). The check is
   unchanged; once `main` contains the package the comparison covers only changed lines again.
+
+### div7a-loan-review
+
+- Imported 2026-09-02 from `https://github.com/ryanduguid/div7a-loan-review.git` at commit
+  `753e7d630cba0f3b4d5b97f29141c685fc47dd09` (tree `0d65c3cac7799ffd83f835223bed0253bbf6b212`,
+  tracked-tree SHA-256 `baea80653779c9270c70751a2418b278bcadef1ee7cc10b1eccdf2113e163680`,
+  latest source release v0.1.0).
+- Command: `git subtree add --prefix=packages/div7a-loan-review https://github.com/ryanduguid/div7a-loan-review.git 753e7d630cba0f3b4d5b97f29141c685fc47dd09 --squash`.
+- Squash commit `4de3b6f092c2499485efb4b3ce128f03f3d5ee35`; merge commit
+  `18b889ed7db11219bf7b82bf4db51a43cac526d2`. `git rev-parse <merge>:packages/div7a-loan-review`
+  equals the source tree.
+- Imported files edited for location: none. The nested `.github/workflows/ci.yml` and
+  `publish-pypi.yml` and `.github/dependabot.yml` are inert records of the source repository;
+  only root workflows are active.
+- Checks run from `packages/div7a-loan-review/` immediately after import in a fresh CPython
+  3.12 virtual environment, as the source `ci.yml` defines: `python -m pip install --upgrade
+  pip`; `python -m pip install ".[dev]"`; `python -m ruff check div7aloan tests`;
+  `python -m mypy`; `python -m pytest -q` (292 passed, 6 skipped); the documented sample
+  registers (`sample_loans_myr_met.csv` exit 0, `sample_loans_mixed.csv` exit 2); the
+  no-network grep over `div7aloan/*.py`; `python -m build`; clean-wheel
+  `rate --year 2026-27 --format json`. All passed. The component has no lockfile, so there is
+  no `uv lock --check`.
