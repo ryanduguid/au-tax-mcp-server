@@ -24,7 +24,7 @@ commit. The imported subtree must have the same tree id as the source commit.
 | `https://github.com/ryanduguid/div7a-loan-review.git` | `753e7d630cba0f3b4d5b97f29141c685fc47dd09` | `0d65c3cac7799ffd83f835223bed0253bbf6b212` | `baea80653779c9270c70751a2418b278bcadef1ee7cc10b1eccdf2113e163680` | v0.1.0 (2026-08-31) | `packages/div7a-loan-review/` | imported: squash `4de3b6f092c2499485efb4b3ce128f03f3d5ee35`, merge `18b889ed7db11219bf7b82bf4db51a43cac526d2` |
 | `https://github.com/ryanduguid/TheExchequerTally.git` | `1e89aebc9611f1e87114290dc13f3434ac6f5d88` | `a6c50adda17a8ef97f2f439bb64da5761c712880` | `b099a7cddaf55c14ad042445d28b507a3a697e0e47c217a44c508967b08e20ca` | v0.1.2 (2026-08-22) | `packages/the-exchequer-tally/` | imported: squash `02245924342f78dcce110c9872ca576999f1fb2b`, merge `089eda33cc5f5a97ac052491d7d831a30ab2d196` |
 | `https://github.com/ryanduguid/SolomonsSword.git` | `af988a45f777559116ec3e59d5abdb0ee7771f90` | `66422d183637058701546a7a1d7ac8aa1254206b` | `b66aa69e69e1589c7864d4d01b60e5f5314c36a5eac344a3749b4faf4cdf4a3e` | v0.1.2 (2026-08-22) | `packages/solomons-sword/` | imported: squash `cb757df10d70be0e490a6f9e5303de9c2394a9d1`, merge `849e8ffffa7e7b7b3e848f9129f14ca0a2a93f1b` |
-| `https://github.com/ryanduguid/TheWIPTally.git` | `f6dcdd702d9344745e95174c8783c0b77b5f9dd2` | `578a0419d959801c36ba429969c96d2585f7ab93` | `9549f0ce2f08063cfc5a39ce1febe630dcb0ebbf60a70bcabef3a3e484c1548a` | none | `packages/the-wip-tally/` | pending |
+| `https://github.com/ryanduguid/TheWIPTally.git` | `f6dcdd702d9344745e95174c8783c0b77b5f9dd2` | `578a0419d959801c36ba429969c96d2585f7ab93` | `9549f0ce2f08063cfc5a39ce1febe630dcb0ebbf60a70bcabef3a3e484c1548a` | none | `packages/the-wip-tally/` | imported: squash `36b535c3ea5d096e72a4a29b11168a0721885bc3`, merge `6c8acfecfa770d1df4c3390c92763a2ee577e7c4` |
 
 ## Import records
 
@@ -148,4 +148,24 @@ commit. The imported subtree must have the same tree id as the source commit.
   defines: `uv run --locked --extra dev ruff check louisgoldberg tests`;
   `uv run --locked --extra dev mypy louisgoldberg`; `uv run --locked --extra dev pytest -q`
   (22 passed); `python -m build`; clean-wheel `solomons-sword --help`;
+  `uv lock --check`. All passed.
+
+### the-wip-tally
+
+- Imported 2026-09-02 from `https://github.com/ryanduguid/TheWIPTally.git` at commit
+  `f6dcdd702d9344745e95174c8783c0b77b5f9dd2` (tree `578a0419d959801c36ba429969c96d2585f7ab93`,
+  tracked-tree SHA-256 `9549f0ce2f08063cfc5a39ce1febe630dcb0ebbf60a70bcabef3a3e484c1548a`,
+  no source release or tag).
+- Command: `git subtree add --prefix=packages/the-wip-tally https://github.com/ryanduguid/TheWIPTally.git f6dcdd702d9344745e95174c8783c0b77b5f9dd2 --squash`.
+- Squash commit `36b535c3ea5d096e72a4a29b11168a0721885bc3`; merge commit
+  `6c8acfecfa770d1df4c3390c92763a2ee577e7c4`. `git rev-parse <merge>:packages/the-wip-tally`
+  equals the source tree.
+- Imported files edited for location: none. The nested `.github/workflows/ci.yml`,
+  `.github/dependabot.yml` and `.github/PULL_REQUEST_TEMPLATE.md` are inert records of the
+  source repository; only root workflows are active.
+- Checks run from `packages/the-wip-tally/` immediately after import, as the source `ci.yml`
+  defines: `uv run --locked --extra dev pytest -q` (40 passed);
+  `pip-audit --local --strict` (no known vulnerabilities); `python -m build`; clean-wheel
+  `wip-tally schedule examples/sample_contracts.csv --as-at 2026-08-31 -o <tmp>` (exit 2 by
+  design, output contains `221,000.00`); `ruff check wiptally tests`; `mypy wiptally`;
   `uv lock --check`. All passed.
