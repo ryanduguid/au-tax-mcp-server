@@ -138,8 +138,9 @@ and read as absent.
 
 Dates are not required. This is a position schedule, not a cash-flow forecast.
 
-A `--mapping-file` JSON object maps canonical names to your headings. See
-`examples/mapping.example.json`.
+A `--mapping-file` JSON object maps canonical names to your headings. Download
+the [mapping example](https://raw.githubusercontent.com/ryanduguid/australian-accounting/main/packages/the-wip-tally/examples/mapping.example.json)
+from the maintained source.
 
 ## The rules it applies
 

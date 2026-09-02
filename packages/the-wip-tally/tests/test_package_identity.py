@@ -27,6 +27,10 @@ def test_published_distribution_uses_the_project_identity() -> None:
     assert "pip install the-wip-tally" in readme
     assert "github.com/ryanduguid/australian-accounting" in readme
     assert "raw.githubusercontent.com/ryanduguid/australian-accounting/main" in readme
+    assert (
+        "https://raw.githubusercontent.com/ryanduguid/australian-accounting/main/"
+        "packages/the-wip-tally/examples/mapping.example.json"
+    ) in readme
     assert "release-the-wip-tally.yml" in release_notes
     assert release_notes.startswith("# v0.1.0\n")
     assert "first PyPI release" in release_notes
