@@ -20,6 +20,17 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+RELEASE_POLICY_SHA = "3ff09b654a17b9a3b55548e25e6108ee582b00c4"
+
+RELEASE_CALLERS = {
+    "aus-accounting-mcp": "apps/aus-accounting-mcp",
+    "ato-benchmark-compare": "packages/ato-benchmark-compare",
+    "payday-super-checker": "packages/payday-super-checker",
+    "div7a-loan-review": "packages/div7a-loan-review",
+    "the-exchequer-tally": "packages/the-exchequer-tally",
+    "solomons-sword": "packages/solomons-sword",
+    "the-wip-tally": "packages/the-wip-tally",
+}
 
 ENGINES = {
     "packages/ato-benchmark-compare": "atobenchmark",
@@ -66,6 +77,20 @@ def production_modules(component: str, package: str) -> list[tuple[Path, int]]:
 
 
 class BoundaryTests(unittest.TestCase):
+    def test_release_callers_pin_the_landed_policy_and_matching_identity(self) -> None:
+        for component, source_directory in RELEASE_CALLERS.items():
+            workflow = (
+                ROOT / ".github" / "workflows" / f"release-{component}.yml"
+            ).read_text(encoding="utf-8")
+            with self.subTest(component=component):
+                self.assertIn(
+                    "uses: ryanduguid/release-policy/.github/workflows/"
+                    f"release-python.yml@{RELEASE_POLICY_SHA}",
+                    workflow,
+                )
+                self.assertIn(f"source-directory: {source_directory}", workflow)
+                self.assertIn(f"tag-prefix: {component}", workflow)
+
     def test_every_component_has_production_modules(self) -> None:
         for component, package in {**ENGINES, **APPLICATION}.items():
             with self.subTest(component=component):
