@@ -23,7 +23,7 @@ commit. The imported subtree must have the same tree id as the source commit.
 | `https://github.com/ryanduguid/payday-super-checker.git` | `5ffe1d48ef4262bb6aecb34122b314fec7c437c6` | `89631a8992225fd11ca637e726968838667d5846` | `3bc9819cc9230709630fac33f1276944a744d3310d23d005c84b429f6291368e` | v0.1.2 prerelease (2026-08-23) | `packages/payday-super-checker/` | imported: squash `3fa513e9e2bd8d7a19021a92a12fc5e734e15c8b`, merge `89ffab414954ac93edbfa14f1a9a5e7dfc392a50` |
 | `https://github.com/ryanduguid/div7a-loan-review.git` | `753e7d630cba0f3b4d5b97f29141c685fc47dd09` | `0d65c3cac7799ffd83f835223bed0253bbf6b212` | `baea80653779c9270c70751a2418b278bcadef1ee7cc10b1eccdf2113e163680` | v0.1.0 (2026-08-31) | `packages/div7a-loan-review/` | imported: squash `4de3b6f092c2499485efb4b3ce128f03f3d5ee35`, merge `18b889ed7db11219bf7b82bf4db51a43cac526d2` |
 | `https://github.com/ryanduguid/TheExchequerTally.git` | `1e89aebc9611f1e87114290dc13f3434ac6f5d88` | `a6c50adda17a8ef97f2f439bb64da5761c712880` | `b099a7cddaf55c14ad042445d28b507a3a697e0e47c217a44c508967b08e20ca` | v0.1.2 (2026-08-22) | `packages/the-exchequer-tally/` | imported: squash `02245924342f78dcce110c9872ca576999f1fb2b`, merge `089eda33cc5f5a97ac052491d7d831a30ab2d196` |
-| `https://github.com/ryanduguid/SolomonsSword.git` | `af988a45f777559116ec3e59d5abdb0ee7771f90` | `66422d183637058701546a7a1d7ac8aa1254206b` | `b66aa69e69e1589c7864d4d01b60e5f5314c36a5eac344a3749b4faf4cdf4a3e` | v0.1.2 (2026-08-22) | `packages/solomons-sword/` | pending |
+| `https://github.com/ryanduguid/SolomonsSword.git` | `af988a45f777559116ec3e59d5abdb0ee7771f90` | `66422d183637058701546a7a1d7ac8aa1254206b` | `b66aa69e69e1589c7864d4d01b60e5f5314c36a5eac344a3749b4faf4cdf4a3e` | v0.1.2 (2026-08-22) | `packages/solomons-sword/` | imported: squash `cb757df10d70be0e490a6f9e5303de9c2394a9d1`, merge `849e8ffffa7e7b7b3e848f9129f14ca0a2a93f1b` |
 | `https://github.com/ryanduguid/TheWIPTally.git` | `f6dcdd702d9344745e95174c8783c0b77b5f9dd2` | `578a0419d959801c36ba429969c96d2585f7ab93` | `9549f0ce2f08063cfc5a39ce1febe630dcb0ebbf60a70bcabef3a3e484c1548a` | none | `packages/the-wip-tally/` | pending |
 
 ## Import records
@@ -129,4 +129,23 @@ commit. The imported subtree must have the same tree id as the source commit.
   `ci.yml` defines: `uv run --locked --extra dev ruff check edwinnixon tests`;
   `uv run --locked --extra dev mypy edwinnixon`; `uv run --locked --extra dev pytest -q`
   (26 passed); `python -m build`; clean-wheel `the-exchequer-tally --help`;
+  `uv lock --check`. All passed.
+
+### solomons-sword
+
+- Imported 2026-09-02 from `https://github.com/ryanduguid/SolomonsSword.git` at commit
+  `af988a45f777559116ec3e59d5abdb0ee7771f90` (tree `66422d183637058701546a7a1d7ac8aa1254206b`,
+  tracked-tree SHA-256 `b66aa69e69e1589c7864d4d01b60e5f5314c36a5eac344a3749b4faf4cdf4a3e`,
+  latest source release v0.1.2).
+- Command: `git subtree add --prefix=packages/solomons-sword https://github.com/ryanduguid/SolomonsSword.git af988a45f777559116ec3e59d5abdb0ee7771f90 --squash`.
+- Squash commit `cb757df10d70be0e490a6f9e5303de9c2394a9d1`; merge commit
+  `849e8ffffa7e7b7b3e848f9129f14ca0a2a93f1b`. `git rev-parse <merge>:packages/solomons-sword`
+  equals the source tree.
+- Imported files edited for location: none. The nested `.github/workflows/ci.yml` and
+  `codeql.yml` and `.github/dependabot.yml` are inert records of the source repository; only
+  root workflows are active.
+- Checks run from `packages/solomons-sword/` immediately after import, as the source `ci.yml`
+  defines: `uv run --locked --extra dev ruff check louisgoldberg tests`;
+  `uv run --locked --extra dev mypy louisgoldberg`; `uv run --locked --extra dev pytest -q`
+  (22 passed); `python -m build`; clean-wheel `solomons-sword --help`;
   `uv lock --check`. All passed.
