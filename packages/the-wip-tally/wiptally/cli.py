@@ -80,7 +80,8 @@ def cmd_review_pack(args: argparse.Namespace) -> int:
     out = Path(args.output)
     _require_suffix(out, ".md")
     source = Path(args.source) if args.source else None
-    _refuse_to_write_over_an_input(out, [schedule_path, source])
+    mapping_path = Path(args.mapping_file) if args.mapping_file else None
+    _refuse_to_write_over_an_input(out, [schedule_path, source, mapping_path])
 
     # Rebuild from the source CSV so the pack cannot drift from a hand-edited schedule.
     if source is None:
@@ -88,7 +89,6 @@ def cmd_review_pack(args: argparse.Namespace) -> int:
             "review-pack needs --source (the contract CSV) so the pack can bind "
             "itself to the facts, not only to a downstream schedule file"
         )
-    mapping_path = Path(args.mapping_file) if args.mapping_file else None
     mapping = load_mapping(mapping_path)
     contracts = read_contracts(source, mapping)
     positions = [measure(contract) for contract in contracts]

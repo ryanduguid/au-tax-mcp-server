@@ -230,3 +230,29 @@ def test_mapping_file_renames_columns(tmp_path: Path) -> None:
     rows = _rows(out)
     assert rows["MAP-1"]["revenue_to_date"] == "500.00"
     assert rows["MAP-1"]["contract_asset"] == "50.00"
+
+
+def test_review_pack_refuses_to_overwrite_its_mapping_file(tmp_path: Path) -> None:
+    schedule = tmp_path / "wip-schedule.csv"
+    assert main(
+        ["schedule", str(SAMPLE), "-o", str(schedule), "--as-at", "2026-08-31"]
+    ) == 2
+    mapping = tmp_path / "mapping.md"
+    original = b"{}\n"
+    mapping.write_bytes(original)
+
+    assert main(
+        [
+            "review-pack",
+            str(schedule),
+            "--source",
+            str(SAMPLE),
+            "--mapping-file",
+            str(mapping),
+            "-o",
+            str(mapping),
+            "--as-at",
+            "2026-08-31",
+        ]
+    ) == 1
+    assert mapping.read_bytes() == original
