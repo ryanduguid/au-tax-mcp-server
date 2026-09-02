@@ -9,16 +9,49 @@ from decimal import Decimal, InvalidOperation
 from .corporate_tax import BaseRateEntityTest, determine_corporate_tax_rate, turnover_threshold_for
 from .distribution_statement import generate_distribution_statement
 
+MAX_MONEY_MAGNITUDE = Decimal("1000000000000.00")
+MAX_MONEY_DECIMAL_PLACES = 2
 
-
-def decimal_type(value: str) -> Decimal:
-    """Fail-closed argparse type for Decimal money."""
+def _finite_decimal(value: str) -> Decimal:
+    """Parse a finite Decimal for a domain-specific argparse type."""
     try:
         parsed = Decimal(value)
     except (InvalidOperation, ValueError) as exc:
         raise argparse.ArgumentTypeError(f"not a decimal amount: {value!r}") from exc
     if not parsed.is_finite():
         raise argparse.ArgumentTypeError(f"not a finite decimal amount: {value!r}")
+    return parsed
+
+
+def money_type(value: str) -> Decimal:
+    """Parse non-negative AUD amounts bounded to cents and $1 trillion."""
+    parsed = _finite_decimal(value)
+    exponent = parsed.as_tuple().exponent
+    if parsed < 0 or parsed > MAX_MONEY_MAGNITUDE:
+        raise argparse.ArgumentTypeError(
+            f"money must be between 0 and {MAX_MONEY_MAGNITUDE} AUD: {value!r}"
+        )
+    if isinstance(exponent, int) and exponent < -MAX_MONEY_DECIMAL_PLACES:
+        raise argparse.ArgumentTypeError(
+            f"money cannot have more than {MAX_MONEY_DECIMAL_PLACES} decimal places: "
+            f"{value!r}"
+        )
+    return parsed
+
+
+def percentage_type(value: str) -> Decimal:
+    """Parse a percentage in the inclusive range 0 to 100."""
+    parsed = _finite_decimal(value)
+    if not Decimal("0") <= parsed <= Decimal("100"):
+        raise argparse.ArgumentTypeError(f"percentage must be between 0 and 100: {value!r}")
+    return parsed
+
+
+def rate_type(value: str) -> Decimal:
+    """Parse a rate as a fraction strictly between 0 and 1."""
+    parsed = _finite_decimal(value)
+    if not Decimal("0") < parsed < Decimal("1"):
+        raise argparse.ArgumentTypeError(f"rate must be between 0 and 1: {value!r}")
     return parsed
 
 def main() -> int:
@@ -31,18 +64,18 @@ def main() -> int:
     # Command: bre-test
     bre_parser = subparsers.add_parser("bre-test", help="Test Base Rate Entity (BRE) eligibility under s 23AA ITRA 1986")
     bre_parser.add_argument("--fy", type=int, required=True, help="Financial Year ending (e.g. 2025)")
-    bre_parser.add_argument("--turnover", type=decimal_type, required=True, help="Aggregated turnover ($)")
-    bre_parser.add_argument("--assessable", type=decimal_type, required=True, help="Total assessable income ($)")
-    bre_parser.add_argument("--passive", type=decimal_type, required=True, help="Base Rate Entity Passive Income ($)")
+    bre_parser.add_argument("--turnover", type=money_type, required=True, help="Aggregated turnover ($)")
+    bre_parser.add_argument("--assessable", type=money_type, required=True, help="Total assessable income ($)")
+    bre_parser.add_argument("--passive", type=money_type, required=True, help="Base Rate Entity Passive Income ($)")
 
     # Command: dist-statement
     dist_parser = subparsers.add_parser("dist-statement", help="Generate distribution statement details")
     dist_parser.add_argument("--entity", type=str, required=True, help="Company name")
     dist_parser.add_argument("--acn", type=str, required=True, help="ACN or ABN")
     dist_parser.add_argument("--recipient", type=str, required=True, help="Shareholder name")
-    dist_parser.add_argument("--amount", type=decimal_type, required=True, help="Total dividend distribution ($)")
-    dist_parser.add_argument("--franking-pct", type=decimal_type, default=Decimal("100.00"), help="Franking percentage (e.g. 100)")
-    dist_parser.add_argument("--tax-rate", type=decimal_type, default=Decimal("0.25"), help="Corporate tax rate (0.25 or 0.30)")
+    dist_parser.add_argument("--amount", type=money_type, required=True, help="Total dividend distribution ($)")
+    dist_parser.add_argument("--franking-pct", type=percentage_type, default=Decimal("100.00"), help="Franking percentage (e.g. 100)")
+    dist_parser.add_argument("--tax-rate", type=rate_type, default=Decimal("0.25"), help="Corporate tax rate (0.25 or 0.30)")
 
     args = parser.parse_args()
 
