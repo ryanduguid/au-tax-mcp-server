@@ -77,6 +77,22 @@ def production_modules(component: str, package: str) -> list[tuple[Path, int]]:
 
 
 class BoundaryTests(unittest.TestCase):
+    def test_imported_diff_coverage_waits_for_a_mainline_baseline(self) -> None:
+        sentinels = {
+            "ci-ato-benchmark-compare.yml": (
+                "packages/ato-benchmark-compare/atobenchmark/mapping.py"
+            ),
+            "ci-payday-super-checker.yml": (
+                "packages/payday-super-checker/paydaysuper/assess.py"
+            ),
+        }
+        for workflow_name, sentinel in sentinels.items():
+            workflow = (
+                ROOT / ".github" / "workflows" / workflow_name
+            ).read_text(encoding="utf-8")
+            with self.subTest(workflow=workflow_name):
+                self.assertIn(f'git cat-file -e "origin/main:{sentinel}"', workflow)
+
     def test_release_callers_pin_the_landed_policy_and_matching_identity(self) -> None:
         for component, source_directory in RELEASE_CALLERS.items():
             workflow = (

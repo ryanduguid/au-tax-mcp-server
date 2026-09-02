@@ -89,7 +89,11 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.python == '3.13'
         run: |
           uv run --locked --extra dev coverage xml --include="atobenchmark/mapping.py" -o coverage.xml
-          uv run --locked --extra dev diff-cover coverage.xml --compare-branch=origin/main --branch-coverage --fail-under=100
+          if git cat-file -e "origin/main:packages/ato-benchmark-compare/atobenchmark/mapping.py"; then
+            uv run --locked --extra dev diff-cover coverage.xml --compare-branch=origin/main --branch-coverage --fail-under=100
+          else
+            echo "::notice::Changed-line coverage starts after the imported package has a mainline baseline."
+          fi
         env:
           UV_PYTHON: ${{ matrix.python }}
 
