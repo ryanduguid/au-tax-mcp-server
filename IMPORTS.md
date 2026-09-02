@@ -20,7 +20,7 @@ commit. The imported subtree must have the same tree id as the source commit.
 | Repository | Commit | Tree | Tracked-tree SHA-256 | Latest release | Destination | Status |
 |---|---|---|---|---|---|---|
 | `https://github.com/ryanduguid/ato-benchmark-compare.git` | `d290c8b77d5cc47346d7a41e843642c2c7908748` | `2405cd169c5731298851f96d7c992715c49c3c6f` | `29468715ce198635375c944c865c3b15578b84f3ac9945fb53a9731d77dea189` | v0.1.5 (2026-08-31) | `packages/ato-benchmark-compare/` | imported: squash `965739bf4348b74987bd8541a996599bdaeba53b`, merge `f4289747daa83a79ee318d4405fd45c3ea9d6cd8` |
-| `https://github.com/ryanduguid/payday-super-checker.git` | `5ffe1d48ef4262bb6aecb34122b314fec7c437c6` | `89631a8992225fd11ca637e726968838667d5846` | `3bc9819cc9230709630fac33f1276944a744d3310d23d005c84b429f6291368e` | v0.1.2 prerelease (2026-08-23) | `packages/payday-super-checker/` | pending |
+| `https://github.com/ryanduguid/payday-super-checker.git` | `5ffe1d48ef4262bb6aecb34122b314fec7c437c6` | `89631a8992225fd11ca637e726968838667d5846` | `3bc9819cc9230709630fac33f1276944a744d3310d23d005c84b429f6291368e` | v0.1.2 prerelease (2026-08-23) | `packages/payday-super-checker/` | imported: squash `3fa513e9e2bd8d7a19021a92a12fc5e734e15c8b`, merge `89ffab414954ac93edbfa14f1a9a5e7dfc392a50` |
 | `https://github.com/ryanduguid/div7a-loan-review.git` | `753e7d630cba0f3b4d5b97f29141c685fc47dd09` | `0d65c3cac7799ffd83f835223bed0253bbf6b212` | `baea80653779c9270c70751a2418b278bcadef1ee7cc10b1eccdf2113e163680` | v0.1.0 (2026-08-31) | `packages/div7a-loan-review/` | pending |
 | `https://github.com/ryanduguid/TheExchequerTally.git` | `1e89aebc9611f1e87114290dc13f3434ac6f5d88` | `a6c50adda17a8ef97f2f439bb64da5761c712880` | `b099a7cddaf55c14ad042445d28b507a3a697e0e47c217a44c508967b08e20ca` | v0.1.2 (2026-08-22) | `packages/the-exchequer-tally/` | pending |
 | `https://github.com/ryanduguid/SolomonsSword.git` | `af988a45f777559116ec3e59d5abdb0ee7771f90` | `66422d183637058701546a7a1d7ac8aa1254206b` | `b66aa69e69e1589c7864d4d01b60e5f5314c36a5eac344a3749b4faf4cdf4a3e` | v0.1.2 (2026-08-22) | `packages/solomons-sword/` | pending |
@@ -55,3 +55,37 @@ commit. The imported subtree must have the same tree id as the source commit.
   Measured 96 percent branch-inclusive over the whole file (`coverage report`: 227 statements,
   5 missed, 100 branches, 4 partial, 97 percent). The check is unchanged; once `main` contains
   the package the comparison covers only changed lines again, as in the source repository.
+
+### payday-super-checker
+
+- Imported 2026-09-02 from `https://github.com/ryanduguid/payday-super-checker.git` at commit
+  `5ffe1d48ef4262bb6aecb34122b314fec7c437c6` (tree `89631a8992225fd11ca637e726968838667d5846`,
+  tracked-tree SHA-256 `3bc9819cc9230709630fac33f1276944a744d3310d23d005c84b429f6291368e`,
+  latest source release v0.1.2 prerelease).
+- Command: `git subtree add --prefix=packages/payday-super-checker https://github.com/ryanduguid/payday-super-checker.git 5ffe1d48ef4262bb6aecb34122b314fec7c437c6 --squash`.
+- Squash commit `3fa513e9e2bd8d7a19021a92a12fc5e734e15c8b`; merge commit
+  `89ffab414954ac93edbfa14f1a9a5e7dfc392a50`. `git rev-parse <merge>:packages/payday-super-checker`
+  equals the source tree.
+- Imported files edited for location: none. The nested `.github/workflows/ci.yml`,
+  `publish-pypi.yml`, `release.yml` (the bespoke experimental prerelease workflow) and
+  `verify.yml`, `.github/dependabot.yml`, `tools/demo.tape`, `tools/generate_calendar.py`,
+  `tools/release.py` and `tools/render_quick_proof.py` are inert records of the source
+  repository; only root workflows are active. The component's own test suite runs
+  `tools/generate_calendar.py` and `tools/render_quick_proof.py --check` in subprocesses and
+  imports `tools/release.py` with fabricated inputs, exactly as the source repository's tests
+  define; none of that touches a remote. Its `git check-ignore` assertions skip themselves
+  because `packages/payday-super-checker/.git` does not exist.
+- Checks run from `packages/payday-super-checker/` immediately after import, as the source
+  `ci.yml` and `verify.yml` define: `uv sync --locked --extra dev --python 3.12`;
+  `uv run --locked --extra dev pytest -q` (616 passed, 5 skipped); scoped branch coverage
+  run and `coverage xml`; `pip-audit --local --strict` (no known vulnerabilities);
+  `python -m build`; clean-wheel sample run (exit 2), `import` flow (exit 0) and the report from
+  the imported contributions (exit 2); shipped-sdist `pip install -e ".[dev]"` and `pytest -q`
+  (616 passed, 5 skipped); `ruff check paydaysuper tests`; `mypy paydaysuper`;
+  `uv lock --check`. All passed.
+- Migration-context exception: `diff-cover coverage.xml --compare-branch=origin/main
+  --branch-coverage --fail-under=100` exits 1 here because `origin/main` of this repository
+  predates the import, so every line of `paydaysuper/assess.py` and `paydaysuper/report.py`
+  counts as changed. Measured 97 percent branch-inclusive over both whole files (`assess.py`
+  97.1 percent, `report.py` 97.2 percent; `coverage report` 98 percent each). The check is
+  unchanged; once `main` contains the package the comparison covers only changed lines again.
