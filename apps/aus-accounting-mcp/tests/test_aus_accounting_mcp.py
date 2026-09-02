@@ -25,7 +25,7 @@ from aus_accounting_mcp.server import (
     list_ato_benchmark_industries,
 )
 
-CANONICAL_REPOSITORY = "https://github.com/ryanduguid/aus-accounting-mcp"
+CANONICAL_REPOSITORY = "https://github.com/ryanduguid/australian-accounting"
 
 
 def _repository_root() -> Path:
@@ -936,7 +936,7 @@ def test_active_repository_metadata_uses_canonical_identity() -> None:
     assert project["urls"]["Repository"] == f"{CANONICAL_REPOSITORY}.git"
     assert server["repository"]["url"] == CANONICAL_REPOSITORY
     assert CANONICAL_REPOSITORY in citation
-    assert "repository aus-accounting-mcp" in readme
+    assert "repository australian-accounting" in readme
 
 
 def test_readme_has_stable_proof_anchor_and_mapping() -> None:
@@ -955,7 +955,7 @@ def test_readme_has_stable_proof_anchor_and_mapping() -> None:
         "minimum_yearly_repayment.verdict: MYR_MET",
         "not a lodgment",
         "human review",
-        "repository aus-accounting-mcp",
+        "repository australian-accounting",
         "aus-accounting-mcp",
         "aus-accounting-mcp-demo",
         "io.github.ryanduguid/aus-accounting",
