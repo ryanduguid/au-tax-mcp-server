@@ -1,33 +1,29 @@
 # Contributing
 
-## Adapter boundary
+Each component is developed, tested and released from its own directory.
 
-Keep MCP registration and policy refusals in `aus_accounting_mcp/server.py`. The
-`aus_accounting_mcp/adapters/` modules validate and translate inputs for the delegated
-engines and serialise their results; they do not copy statutory calculations, datasets,
-rates or dates into this facade. Shared monetary validation belongs in
-`aus_accounting_mcp/money.py`. Tests and examples must use fabricated, synthetic data.
+## Command routing
 
-## Compatibility metadata
+| Component | Directory | Checks |
+|---|---|---|
+| Aus Accounting MCP | `apps/aus-accounting-mcp/` | `uv run --locked --extra dev pytest -q`; `uv run --locked --extra dev ruff check aus_accounting_mcp tests`; `uv run --locked --extra dev mypy aus_accounting_mcp` |
 
-Engine dependency pins live in `pyproject.toml` and `uv.lock`. `compatibility.json`
-records the last verified published server version and the matching engine releases;
-`server.json` records the published MCP Registry package. An unreleased source version
-may therefore be ahead of both files. Change compatibility metadata only as part of a
-release handoff, and keep repository, PyPI, release, Registry and engine versions
-consistent with the artifacts that actually exist.
+Engine rows are added as each engine is imported.
 
-## Demo evidence
+## Rules
 
-The demo must call real registered MCP tools with fabricated inputs and show both the
-synthetic BAS result and Division 7A loan-review outcome. `docs/quick-proof.txt` is the accessible
-source of truth; `docs/quick-proof.webp` is derived media. Regenerate and review both when
-demo output changes, then run the supplementary demo and media checks in `AGENTS.md`.
+- Keep a change inside one component unless it is a root policy or workflow change.
+- Do not move, rename or refactor a component in the same change that alters its
+  behaviour.
+- Never add a root package manager, root lockfile, shared runtime library, unified
+  version or code generator.
+- Engines must not import the MCP application or each other, and production code must
+  not use relative imports that leave the component directory.
+- Use fabricated data only, and follow the component's own `CONTRIBUTING.md` and
+  `SECURITY.md`.
 
-## Release handoff
+## Releases
 
-Do not publish from a contribution branch. After the CI gates and relevant supplementary
-checks pass, hand the reviewed commit to the existing release workflow. A version tag
-creates the GitHub release; dispatch **Publish to PyPI** with that same tag, verify the
-published package, then dispatch **Publish to MCP Registry** for the exact version in
-`server.json`. Each publication remains an explicit, approval-gated action.
+Releases are per component. A release uses the namespaced tag `<component>/vX.Y.Z`
+and that component's root release workflow. Nothing publishes from a contribution
+branch.

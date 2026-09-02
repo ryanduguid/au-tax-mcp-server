@@ -28,6 +28,16 @@ from aus_accounting_mcp.server import (
 CANONICAL_REPOSITORY = "https://github.com/ryanduguid/aus-accounting-mcp"
 
 
+def _repository_root() -> Path:
+    # The package lives in apps/aus-accounting-mcp; the workflows these tests audit
+    # live in the repository root .github directory above it.
+    package_root = Path(__file__).resolve().parents[1]
+    for candidate in (package_root, *package_root.parents):
+        if (candidate / ".github" / "workflows").is_dir():
+            return candidate
+    raise AssertionError("no .github/workflows directory found above the package")
+
+
 def test_proof_package_surface_is_versioned_and_keeps_stdio_separate() -> None:
     root = Path(__file__).resolve().parents[1]
     project = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))["project"]
@@ -960,7 +970,7 @@ def test_committed_binary_assets_have_current_provenance() -> None:
     assert "static WebP proof" in release_notes
     assert "animated GIF" not in release_notes
     assert not (root / "docs" / "quick-proof.gif").exists()
-    assert not (root / ".github" / "social-preview.png").exists()
+    assert not (_repository_root() / ".github" / "social-preview.png").exists()
 
 
 def test_server_metadata_publishes_exact_pypi_release() -> None:
@@ -1038,7 +1048,7 @@ def test_release_workflows_use_registered_pypi_publisher() -> None:
     root = Path(__file__).resolve().parents[1]
     readme = (root / "README.md").read_text(encoding="utf-8")
 
-    _assert_registered_pypi_publisher(_workflow_sources(root))
+    _assert_registered_pypi_publisher(_workflow_sources(_repository_root()))
 
     assert "[CITATION.cff](CITATION.cff)" in readme
     assert (
@@ -1048,7 +1058,7 @@ def test_release_workflows_use_registered_pypi_publisher() -> None:
 
 
 def test_release_uses_the_hardened_shared_policy_contract() -> None:
-    root = Path(__file__).resolve().parents[1]
+    root = _repository_root()
     release = (root / ".github" / "workflows" / "release.yml").read_text(
         encoding="utf-8"
     )
@@ -1068,7 +1078,7 @@ def test_release_uses_the_hardened_shared_policy_contract() -> None:
 
 
 def test_registry_publisher_is_pinned_and_checksum_verified() -> None:
-    root = Path(__file__).resolve().parents[1]
+    root = _repository_root()
     workflow = (root / ".github" / "workflows" / "publish-mcp.yml").read_text(encoding="utf-8")
 
     assert "releases/latest" not in workflow
