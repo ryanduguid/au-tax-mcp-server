@@ -1,3 +1,13 @@
+# v0.1.3
+
+This is the first PyPI release of `solomons-sword`.
+
+- Move the maintained source to `packages/solomons-sword` in the
+  `australian-accounting` monorepo.
+- Publish through `release-solomons-sword.yml`, using the monorepo's
+  namespaced, attested release workflow.
+- Preserve the v0.1.2 Division 6, Section 100A and Section 99B behavior.
+
 # v0.1.2
 
 The repository's [GitHub Releases](https://github.com/ryanduguid/SolomonsSword/releases) page is the canonical release history. A separate changelog is intentionally not maintained.
