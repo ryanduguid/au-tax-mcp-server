@@ -1,6 +1,7 @@
 """CSV review mode."""
 from __future__ import annotations
 
+import csv
 from decimal import Decimal
 
 import pytest
@@ -96,6 +97,27 @@ def test_a_byte_order_mark_does_not_break_the_first_column(tmp_path):
     path.write_text(",".join(GATE_COLUMNS) + "\nL-1,true,true,7,false,unknown,0.0827,2023-24\n",
                     encoding="utf-8-sig")
     assert load_rows(path, GATE_COLUMNS)[0]["loan_id"] == "L-1"
+
+
+def test_a_quoted_multiline_value_preserves_its_newline(tmp_path):
+    path = tmp_path / "multiline.csv"
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        handle.write('loan_id,borrower_reference\nL-1,"first line\nsecond line"\n')
+    assert load_rows(path, ("loan_id", "borrower_reference"))[0][
+        "borrower_reference"
+    ] == "first line\nsecond line"
+
+
+def test_a_multiline_numeric_cell_is_not_joined_into_a_valid_amount(tmp_path):
+    path = tmp_path / "multiline-number.csv"
+    malformed = row(payments_applied_during_the_year="25\n556.00")
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=malformed)
+        writer.writeheader()
+        writer.writerow(malformed)
+
+    with pytest.raises(RegisterError, match="payments_applied_during_the_year"):
+        review_register_file(path, YEAR)
 
 
 # --- verdicts and counts ----------------------------------------------

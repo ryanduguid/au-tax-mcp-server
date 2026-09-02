@@ -163,12 +163,12 @@ def require_columns(fieldnames: Sequence[str] | None, needed: Iterable[str], whe
 def load_rows(path: Path | str, needed: Iterable[str]) -> list[dict]:
     path = Path(path)
     try:
-        text = path.read_text(encoding="utf-8-sig")
+        with path.open(encoding="utf-8-sig", newline="") as handle:
+            reader = csv.DictReader(handle)
+            require_columns(reader.fieldnames, needed, str(path))
+            rows = list(reader)
     except OSError as exc:
         raise RegisterError(f"cannot read the loan register at {path}: {exc}")
-    reader = csv.DictReader(text.splitlines())
-    require_columns(reader.fieldnames, needed, str(path))
-    rows = list(reader)
     if not rows:
         raise RegisterError(f"{path} carries a header but no loan rows")
     return rows
