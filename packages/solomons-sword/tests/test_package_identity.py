@@ -28,6 +28,10 @@ def test_published_distribution_uses_the_project_identity() -> None:
     assert "**Package lifecycle:** published." in readme
     assert "pip install solomons-sword" in readme
     assert "github.com/ryanduguid/australian-accounting" in readme
+    assert (
+        "https://github.com/ryanduguid/australian-accounting/blob/main/"
+        "packages/solomons-sword/DISCLAIMER.md"
+    ) in readme
     assert "`solomons-sword` distribution and command" in readme
     assert "`louisgoldberg` import package" in readme
     assert "solomons-sword s100a-check" in readme
@@ -35,6 +39,11 @@ def test_published_distribution_uses_the_project_identity() -> None:
     assert release_notes.startswith("# v0.1.3\n")
     assert "first PyPI release" in release_notes
     assert "release-solomons-sword.yml" in release_notes
+    assert (
+        "https://github.com/ryanduguid/australian-accounting/releases?q=solomons-sword"
+        in release_notes
+    )
+    assert "Releases through v0.1.2 are recorded" in release_notes
 
     help_result = subprocess.run(
         [sys.executable, "-m", "louisgoldberg.cli", "--help"],
