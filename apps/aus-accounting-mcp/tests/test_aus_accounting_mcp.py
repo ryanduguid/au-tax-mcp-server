@@ -932,11 +932,16 @@ def test_active_repository_metadata_uses_canonical_identity() -> None:
     server = json.loads((root / "server.json").read_text(encoding="utf-8"))
     citation = (root / "CITATION.cff").read_text(encoding="utf-8")
     readme = (root / "README.md").read_text(encoding="utf-8")
+    about_helper = (root / "scripts" / "publish-github-about.sh").read_text(
+        encoding="utf-8"
+    )
 
     assert project["urls"]["Repository"] == f"{CANONICAL_REPOSITORY}.git"
     assert server["repository"]["url"] == CANONICAL_REPOSITORY
     assert CANONICAL_REPOSITORY in citation
     assert "repository australian-accounting" in readme
+    assert 'REPO="ryanduguid/australian-accounting"' in about_helper
+    assert "ryanduguid/aus-accounting-mcp" not in about_helper
 
 
 def test_readme_has_stable_proof_anchor_and_mapping() -> None:
