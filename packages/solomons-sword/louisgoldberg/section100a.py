@@ -53,6 +53,9 @@ def evaluate_section100a_risk(
     """
     Evaluate Section 100A risk zone under PCG 2022/2.
     """
+    if not distribution_amount.is_finite() or distribution_amount <= 0:
+        raise ValueError("distribution amount must be positive and finite")
+
     risk_factors: List[str] = []
     mitigating: List[str] = []
 

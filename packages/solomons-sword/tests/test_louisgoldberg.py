@@ -115,6 +115,24 @@ def test_section100a_does_not_default_to_green():
     assert result.is_ordinary_family_dealing is None
 
 
+@pytest.mark.parametrize(
+    "amount",
+    [
+        Decimal("0"),
+        Decimal("-0.01"),
+        Decimal("NaN"),
+        Decimal("Infinity"),
+        Decimal("-Infinity"),
+    ],
+)
+def test_section100a_rejects_non_positive_or_non_finite_distributions(amount):
+    with pytest.raises(ValueError, match="positive and finite"):
+        evaluate_section100a_risk(
+            beneficiary_name="Example Beneficiary",
+            distribution_amount=amount,
+        )
+
+
 def test_division6_rejects_percentages_that_do_not_total_100():
     assessment = TrustIncomeAssessment(
         financial_year=2025,
