@@ -15,6 +15,8 @@ from __future__ import annotations
 from decimal import Decimal, InvalidOperation, localcontext
 
 CENTS = Decimal("0.01")
+MAX_MONEY_MAGNITUDE = Decimal("1000000000000.00")
+MAX_MONEY_DECIMAL_PLACES = 2
 
 # ROUND_HALF_UP is the ordinary accounting convention and the one a reviewer
 # re-performing on paper will reach for. It is not a statutory rule.
@@ -70,6 +72,17 @@ def parse_money(raw: object, where: str) -> Decimal:
         raise MoneyError(
             f"{where} is {raw!r}; a negative amount here inverts the shortfall and "
             "reports exposure as money owed back to the borrower"
+        )
+    if value > MAX_MONEY_MAGNITUDE:
+        raise MoneyError(
+            f"{where} is {raw!r}; amounts cannot exceed "
+            f"{MAX_MONEY_MAGNITUDE} AUD"
+        )
+    exponent = value.as_tuple().exponent
+    if isinstance(exponent, int) and exponent < -MAX_MONEY_DECIMAL_PLACES:
+        raise MoneyError(
+            f"{where} is {raw!r}; amounts cannot have more than "
+            f"{MAX_MONEY_DECIMAL_PLACES} decimal places"
         )
     return value
 
