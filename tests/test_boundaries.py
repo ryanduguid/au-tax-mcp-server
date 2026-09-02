@@ -93,6 +93,12 @@ class BoundaryTests(unittest.TestCase):
             with self.subTest(workflow=workflow_name):
                 self.assertIn(f'git cat-file -e "origin/main:{sentinel}"', workflow)
 
+    def test_anchor_required_checks_are_not_suppressed_by_path_filters(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertNotIn("\n    paths:\n", workflow)
+
     def test_release_callers_pin_the_landed_policy_and_matching_identity(self) -> None:
         for component, source_directory in RELEASE_CALLERS.items():
             workflow = (
