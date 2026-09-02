@@ -48,10 +48,20 @@ def generate_distribution_statement(
     # so a sub-cent total is split into halves that do not add back to it.
     if total_distribution != total_distribution.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP):
         raise ValueError(f"total_distribution must be a whole number of cents, got {total_distribution}")
-    if not (Decimal("0.00") <= franking_percentage <= Decimal("100.00")):
-        raise ValueError(f"franking_percentage must be between 0 and 100, got {franking_percentage}")
-    if not (Decimal("0.00") < corporate_tax_rate < Decimal("1.00")):
-        raise ValueError(f"corporate_tax_rate must be a fraction between 0 and 1, got {corporate_tax_rate}")
+    if not franking_percentage.is_finite() or not (
+        Decimal("0.00") <= franking_percentage <= Decimal("100.00")
+    ):
+        raise ValueError(
+            f"franking_percentage must be finite and between 0 and 100, got "
+            f"{franking_percentage}"
+        )
+    if not corporate_tax_rate.is_finite() or not (
+        Decimal("0.00") < corporate_tax_rate < Decimal("1.00")
+    ):
+        raise ValueError(
+            f"corporate_tax_rate must be a finite fraction between 0 and 1, got "
+            f"{corporate_tax_rate}"
+        )
     pct = franking_percentage / Decimal("100.00")
     franked_portion = (total_distribution * pct).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     unfranked_portion = (total_distribution - franked_portion).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
