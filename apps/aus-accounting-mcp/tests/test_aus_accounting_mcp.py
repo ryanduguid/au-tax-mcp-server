@@ -68,12 +68,23 @@ def test_build_backend_is_exactly_pinned_for_reproducible_wheels() -> None:
     assert re.fullmatch(r"hatchling==\d+(?:\.\d+)+", build_system["requires"][0])
 
 
+# Root workflows named ci-<component>.yml or release-<component>.yml belong to the
+# other components of this repository; every remaining root workflow is this
+# application's, so the single-publisher guard below still covers every file that
+# could publish this package.
+OTHER_COMPONENT_WORKFLOW = re.compile(
+    r"(?:ci|release)-(?!aus-accounting-mcp\.ya?ml$)[a-z0-9-]+\.ya?ml"
+)
+
+
 def _workflow_sources(root: Path) -> dict[str, str]:
     workflow_dir = root / ".github" / "workflows"
     return {
         path.name: path.read_text(encoding="utf-8")
         for path in sorted(workflow_dir.iterdir())
-        if path.is_file() and path.suffix in {".yml", ".yaml"}
+        if path.is_file()
+        and path.suffix in {".yml", ".yaml"}
+        and OTHER_COMPONENT_WORKFLOW.fullmatch(path.name) is None
     }
 
 
@@ -203,7 +214,7 @@ def _pypi_publisher_uses(workflows: dict[str, str]) -> list[tuple[str, str]]:
 
 
 def _assert_registered_pypi_publisher(workflows: dict[str, str]) -> None:
-    release = workflows["release.yml"]
+    release = workflows["release-aus-accounting-mcp.yml"]
     release_jobs = _workflow_jobs(release)
 
     assert "workflow_dispatch:" not in release
@@ -214,7 +225,7 @@ def _assert_registered_pypi_publisher(workflows: dict[str, str]) -> None:
         re.fullmatch(r"\s*environment:\s*pypi", line, re.IGNORECASE)
         for line in _yaml_mapping_lines(release)
     ), "release workflow must not select the pypi environment"
-    assert '  push:\n    tags:\n      - "v*"' in release
+    assert '  push:\n    tags: ["aus-accounting-mcp/v*"]' in release
     release_job = release_jobs.get("release")
     assert release_job is not None
     assert (
@@ -271,12 +282,11 @@ def _assert_registered_pypi_publisher(workflows: dict[str, str]) -> None:
 
 def _valid_pypi_workflow_fixture() -> dict[str, str]:
     return {
-        "release.yml": """\
+        "release-aus-accounting-mcp.yml": """\
 name: Release
 on:
   push:
-    tags:
-      - "v*"
+    tags: ["aus-accounting-mcp/v*"]
 jobs:
   release:
     uses: ryanduguid/release-policy/.github/workflows/release-python.yml@abc123
@@ -1059,7 +1069,7 @@ def test_release_workflows_use_registered_pypi_publisher() -> None:
 
 def test_release_uses_the_hardened_shared_policy_contract() -> None:
     root = _repository_root()
-    release = (root / ".github" / "workflows" / "release.yml").read_text(
+    release = (root / ".github" / "workflows" / "release-aus-accounting-mcp.yml").read_text(
         encoding="utf-8"
     )
     release_job = _workflow_jobs(release)["release"]
@@ -1067,8 +1077,10 @@ def test_release_uses_the_hardened_shared_policy_contract() -> None:
 
     assert (
         "uses: ryanduguid/release-policy/.github/workflows/release-python.yml@"
-        "8b4de1ed339f1358b5f3e850b63412d8717d01da"
+        "6ad53a7b030da22fc299cee704c37ba7550ea1d7"
     ) in release_mapping
+    assert "source-directory: apps/aus-accounting-mcp" in release_mapping
+    assert "tag-prefix: aus-accounting-mcp" in release_mapping
     permissions = _yaml_block(release_job, "permissions", 4)
     assert permissions is not None
     assert re.search(r"(?m)^      actions:\s*read\s*(?:#.*)?$", permissions)

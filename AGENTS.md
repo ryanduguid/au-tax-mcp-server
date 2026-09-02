@@ -19,3 +19,6 @@ checks from its own directory.
   or generated client reports enter this repository.
 - Movement, import and behaviour changes are separate changes. Do not refactor a
   component while moving or importing it.
+- A release covers one component, on the namespaced tag `<component>/vX.Y.Z`, through
+  that component's root release workflow. Never tag, release or publish without
+  explicit approval.

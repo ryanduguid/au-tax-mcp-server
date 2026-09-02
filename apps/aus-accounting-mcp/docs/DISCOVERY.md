@@ -70,16 +70,18 @@ admin), so the `github-about` workflow warns and continues rather than failing.
 - Official MCP registry: listed as `io.github.ryanduguid/aus-accounting` since
   25 August 2026. Record:
   https://registry.modelcontextprotocol.io/v0.1/servers/io.github.ryanduguid%2Faus-accounting/versions/latest
-  Keep `server.json` in the repo root. The [MCP Registry PyPI package
+  Keep `server.json` in the application directory `apps/aus-accounting-mcp/`, where
+  `publish-mcp.yml` runs. The [MCP Registry PyPI package
   guidance](https://github.com/modelcontextprotocol/registry/blob/main/docs/modelcontextprotocol-io/package-types.mdx)
   requires the published package README to contain its matching `mcp-name`
   marker. Version 0.1.6 is published and verified on PyPI, and `server.json`
   names that exact package version. GitHub Actions OIDC publishes the registry
   record only after an explicit manual dispatch.
-- For future releases, push the version tag to create and attest the GitHub
-  release, then dispatch **Publish to PyPI** with the same tag. PyPI's trusted
+- For future releases, push the namespaced tag `aus-accounting-mcp/vX.Y.Z` to create
+  and attest the GitHub release, then dispatch **Publish to PyPI** with the same tag. PyPI's trusted
   publisher is bound to `publish-pypi.yml`; do not add a publisher job to
-  `release.yml` unless the PyPI publisher configuration is changed with it.
+  `release-aus-accounting-mcp.yml` unless the PyPI publisher configuration is changed
+  with it.
 - Do not copy AGPL or proprietary-corpus language from other ATO MCP products.
 
 ## Release provenance
