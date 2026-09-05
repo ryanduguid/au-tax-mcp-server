@@ -1,8 +1,8 @@
-# ato-benchmark-compare
+# ATO benchmark comparison
 
 ```
 +----------------------------------------------------------------------+
-|                        ato-benchmark-compare                         |
+|                       ATO benchmark comparison                       |
 +----------------------------------------------------------------------+
 |           Offline variance analysis against ATO benchmarks           |
 +----------------------------------+-----------------------------------+
@@ -20,6 +20,8 @@
 [![PyPI](https://img.shields.io/pypi/v/ato-benchmark-compare.svg?color=5C2D91&labelColor=04001F)](https://pypi.org/project/ato-benchmark-compare/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-4F485E.svg?labelColor=04001F)](LICENSE)
 [![python](https://img.shields.io/badge/python-3.10%2B-5C2D91.svg?logo=python&logoColor=white&labelColor=04001F)](https://www.python.org/)
+
+Distribution `ato-benchmark-compare`, import package `atobenchmark`, command `ato-benchmark-compare`.
 
 Compare a set of profit and loss figures against the ATO small business benchmarks,
 on your own machine, with the working shown.
@@ -59,6 +61,14 @@ and the differences change the answer:
 Source: Australian Taxation Office, [How we calculate benchmark
 ratios](https://www.ato.gov.au/businesses-and-organisations/income-deductions-and-concessions/small-business-benchmarks/small-business-benchmarks-methodology-and-ratio-calculations/how-we-calculate-benchmark-ratios)
 (QC 37143).
+
+## Excel workbook
+
+No Python? [`workbooks/ato-benchmark-compare.xlsx`](workbooks/ato-benchmark-compare.xlsx)
+is the same comparison in ordinary worksheet formulas: paste the profit and loss,
+review the mapping, pick the industry and read the result. It is macro-free, needs
+desktop Excel for Microsoft 365 or Excel 2024, and is held to this engine's answer
+by `tests/test_workbook.py`. See [workbooks/README.md](workbooks/README.md).
 
 ## Install
 
