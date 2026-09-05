@@ -74,9 +74,12 @@ def test_cached_values_were_calculated_by_desktop_excel(cached):
     assert sources["B2"].value == __version__
     assert str(sources["B3"].value).startswith("Excel ")
     assert as_date(cached["Summary"]["B2"].value) == AS_AT
-    assert cached["Summary"]["B4"].value == "Y"
-    assert cached["Review Checks"]["B13"].value == "REVIEW"
-    assert cached["Start Here"]["A11"].value == "REVIEW"
+    # The transition confirmation ships as N, as the CLI defaults it, so the shipped
+    # sample is BLOCKED at that check exactly as the CLI stops on it without the flag.
+    assert cached["Summary"]["B4"].value == "N"
+    assert cached["Review Checks"]["B16"].value == "BLOCKED"
+    assert cached["Review Checks"]["B4"].value == "BLOCKED"
+    assert cached["Start Here"]["A11"].value == "BLOCKED"
 
 
 def test_sample_matches_the_engine_line_by_line(cached):

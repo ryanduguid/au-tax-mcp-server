@@ -85,7 +85,7 @@ def header(ws, row, titles):
         style(ws.cell(row=row, column=col, value=title), **HEAD)
 
 
-def add_table(ws, name, ref, formulas=None):
+def add_table(ws, name, ref, formulas=None, array_columns=()):
     table = Table(displayName=name, ref=ref)
     table.tableStyleInfo = TableStyleInfo(name="TableStyleLight1", showRowStripes=True)
     first_col, _, last_col, _ = range_boundaries(ref)
@@ -95,7 +95,8 @@ def add_table(ws, name, ref, formulas=None):
         formula = (formulas or {}).get(title)
         columns.append(TableColumn(
             id=i, name=title,
-            calculatedColumnFormula=None if formula is None else TableFormula(attr_text=formula),
+            calculatedColumnFormula=None if formula is None else TableFormula(
+                attr_text=formula, array=True if title in array_columns else None),
         ))
     table.tableColumns = columns
     ws.add_table(table)
@@ -219,7 +220,8 @@ def formulas():
         "Flag_ooc": "=" + bool_expr("out_of_cycle"),
         "Flag_ftf": "=" + bool_expr("first_contribution_to_fund"),
         "Row_problem": (
-            '=TRIM(IF(OR(' + date_bad + '),"date ","")'
+            f'=TRIM(IF(TRIM({T("employee_id")}&"")="","employee_id ","")'
+            '&IF(OR(' + date_bad + '),"date ","")'
             f'&IF(NOT(ISNUMBER({pay})),"payment_date ","")'
             f'&IF(AND(ISNUMBER({pay}),{pay}<{excel_date(REGIME_START)}),"pre-1-Jul-2026 ","")'
             '&IF(OR(' + amount_bad + '),"amount ","")'
@@ -238,8 +240,10 @@ def formulas():
         "Cap": f'=IF(ISNUMBER({matched}),{matched},IF(ISNUMBER({rem_amt}),{rem_amt},{sg}))',
         "Due_ooc": f'=IF(AND({ooc}=1,ISNUMBER({nxt})),{bd(nxt, 7)},"")',
         "Due_ftf": f'=IF({ftf}=1,{bd(pay, 20)},"")',
+        # 0, not "", where there is no deadline: the item 4 lookups multiply this column
+        # inside SUMPRODUCT and text would raise #VALUE! even when multiplied by zero.
         "Own_due": (
-            f'=IF(OR({db}=1,NOT(ISNUMBER({pay}))),"",IF(OR({ooc}=1,{ftf}=1),'
+            f'=IF(OR({db}=1,NOT(ISNUMBER({pay}))),0,IF(OR({ooc}=1,{ftf}=1),'
             f'MAX({T("Due_ooc")},{T("Due_ftf")}),{bd(pay, 7)}))'
         ),
         "Own_pathway": (
@@ -257,29 +261,37 @@ def formulas():
         # Evidence against the row's own deadline. Aligned or possible deadlines only
         # ever propagate values already present, so the sweep needs no recursion.
         "Evidence_own": (
-            f'=IF(OR({T("Own_due")}="",{sg}<=0,{db}=1,{T("Cap")}<=0),"impossible",'
+            f'=IF(OR({T("Own_due")}=0,{sg}<=0,{db}=1,{T("Cap")}<=0),"impossible",'
             f'IF(ISNUMBER({rec}),IF({rec}<{T("Earliest_prepay")},"impossible",'
             f'IF({rec}<={AS_AT},IF(OR({rec}<{pay},{rec}<={T("Own_due")}),"confirmed",'
             f'IF({rec}>{T("Own_due")},"impossible","possible")),'
             f'IF({rec}<={T("Own_due")},"possible","impossible"))),'
             f'IF(AND(ISNUMBER({rem}),{rem}>{T("Own_due")}),"impossible","possible")))'
         ),
+        # EXACT keeps employee ids case-sensitive, as the engine groups them; MAXIFS
+        # would fold E123 and e123 together and could extend a deadline it should not.
         "Confirmed_latest": (
-            f'=IF(OR({db}=1,{T("Own_due")}=""),"",_xlfn.MAXIFS(tblLines[Own_due],tblLines[employee_id],'
-            f'{T("employee_id")},tblLines[payment_date],"<"&{pay},tblLines[Evidence_own],"confirmed"))'
+            f'=IF(OR({db}=1,{T("Own_due")}=0),"",SUMPRODUCT(MAX(EXACT(tblLines[employee_id],{T("employee_id")})'
+            f'*(tblLines[payment_date]<{pay})*(tblLines[Evidence_own]="confirmed")*tblLines[Own_due])))'
         ),
         "Possible_latest": (
-            f'=IF(OR({db}=1,{T("Own_due")}=""),"",_xlfn.MAXIFS(tblLines[Own_due],tblLines[employee_id],'
-            f'{T("employee_id")},tblLines[payment_date],"<"&{pay},tblLines[Evidence_own],"<>impossible"))'
+            f'=IF(OR({db}=1,{T("Own_due")}=0),"",SUMPRODUCT(MAX(EXACT(tblLines[employee_id],{T("employee_id")})'
+            f'*(tblLines[payment_date]<{pay})*(tblLines[Evidence_own]<>"impossible")*tblLines[Own_due])))'
         ),
         "Final_due": (
-            f'=IF({T("Own_due")}="","",IF(AND(ISNUMBER({T("Confirmed_latest")}),'
+            f'=IF({T("Own_due")}=0,"",IF(AND(ISNUMBER({T("Confirmed_latest")}),'
             f'{T("Confirmed_latest")}>{T("Own_due")}),{T("Confirmed_latest")},{T("Own_due")}))'
         ),
         "Pathway": (
-            f'=IF({T("Own_due")}="",{T("Own_pathway")},IF(AND(ISNUMBER({T("Confirmed_latest")}),'
+            f'=IF({T("Own_due")}=0,{T("Own_pathway")},IF(AND(ISNUMBER({T("Confirmed_latest")}),'
             f'{T("Confirmed_latest")}>{T("Own_due")}),"ITEM4_ALIGNED",{T("Own_pathway")}))'
         ),
+        "Case_variant": (
+            f'=IF(COUNTIF(tblLines[employee_id],{T("employee_id")})>SUMPRODUCT(--EXACT(tblLines[employee_id],'
+            f'{T("employee_id")})),1,0)'
+        ),
+        "Sample_row": "=IF(AND(ISNUMBER(MATCH(" + T("employee_id") + ",{SAMPLE_IDS},0)),ISNUMBER(MATCH("
+                      + pay + ",{SAMPLE_DATES},0))),1,0)",
         "Possible_item4": (
             f'=IF({due}="","",IF(AND(ISNUMBER({T("Possible_latest")}),{T("Possible_latest")}>{due}),'
             f'{T("Possible_latest")},""))'
@@ -367,8 +379,9 @@ CALC_ORDER = [
     "Stale_prepay", "OTRC", "Base_shortfall", "Offset_s18D", "Final_shortfall", "Lateness_basis",
     "Outstanding_to", "NEC_end", "Days_late", "NEC", "GIC_estimated", "Shortfall_r", "NEC_r",
     "Uplift_best", "Uplift_worst", "SGC_low", "SGC_high", "Transition_row",
-    "Receipt_established", "Assessable", "Duplicate",
+    "Receipt_established", "Assessable", "Duplicate", "Case_variant", "Sample_row",
 ]
+ARRAY_CALCS = {"Confirmed_latest", "Possible_latest", "Case_variant"}
 DATE_CALCS = {"Due_ooc", "Due_ftf", "Own_due", "Earliest_prepay", "Settled", "Remit",
               "Confirmed_latest", "Possible_latest", "Final_due", "Possible_item4",
               "Outstanding_to", "NEC_end"}
@@ -382,6 +395,11 @@ def build() -> None:
     holidays, provisional, verified_until = read_holidays()
     gic, gic_last = read_gic()
     calc = formulas()
+    epoch = date(1899, 12, 30)
+    sample_ids = ",".join(f'"{r["employee_id"]}"' for r in rows)
+    sample_dates = ",".join(str((date.fromisoformat(r["payment_date"]) - epoch).days) for r in rows)
+    calc["Sample_row"] = (calc["Sample_row"].replace("{SAMPLE_IDS}", "{" + sample_ids + "}")
+                          .replace("{SAMPLE_DATES}", "{" + sample_dates + "}"))
     assert set(calc) == set(CALC_ORDER), set(calc) ^ set(CALC_ORDER)
     wb = Workbook()
 
@@ -416,7 +434,7 @@ def build() -> None:
         ws.cell(row=i, column=1, value=text).alignment = Alignment(wrap_text=True, vertical="top")
     ws.column_dimensions["A"].width = 110
     style(ws["A10"], value="Overall status", font=Font(bold=True))
-    style(ws["A11"], value="='Review Checks'!B13", font=Font(bold=True, size=14), **CALC)
+    style(ws["A11"], value="='Review Checks'!B16", font=Font(bold=True, size=14), **CALC)
     ws["A13"] = (f"payday-super-checker workbook, engine {__version__}. Macro-free. "
                  "Not advice; see DISCLAIMER.md in the repository.")
 
@@ -441,14 +459,20 @@ def build() -> None:
             else:
                 cell.number_format = TEXT
         for c, column in enumerate(CALC_ORDER, len(INPUT_COLUMNS) + 1):
-            cell = style(ws.cell(row=r, column=c, value=calc[column]), **CALC)
+            cell = style(ws.cell(row=r, column=c), **CALC)
+            # Array formulas: a same-table column inside EXACT would otherwise be
+            # rewritten to a this-row reference on load and match every employee.
+            if column in ARRAY_CALCS:
+                cell.value = ArrayFormula(cell.coordinate, calc[column])
+            else:
+                cell.value = calc[column]
             if column in DATE_CALCS:
                 cell.number_format = DATE
             elif column in MONEY_CALCS:
                 cell.number_format = MONEY
     last_row = len(rows) + 1
     add_table(ws, "tblLines", f"A1:{get_column_letter(len(titles))}{last_row}",
-              {k: v[1:] for k, v in calc.items()})
+              {k: v[1:] for k, v in calc.items()}, ARRAY_CALCS)
     for column in BOOL_COLUMNS:
         col = get_column_letter(INPUT_COLUMNS.index(column) + 1)
         dv = DataValidation(type="list", formula1='"yes,no"', allow_blank=True)
@@ -516,7 +540,7 @@ def build() -> None:
     inputs = [
         (2, "As-at date (notional earnings on unpaid lines run to it)", DEFAULT_AS_AT, DATE),
         (3, "ATO assessment date (blank if none has issued)", None, DATE),
-        (4, "LCR 2026/1 transition allocation reconciled and confirmed (Y/N)", "Y", None),
+        (4, "LCR 2026/1 transition allocation reconciled and confirmed (Y/N)", "N", None),
         (5, "Remittance-only review accepted (Y/N)", "N", None),
         (6, "Holiday coverage verified until", verified_until, DATE),
     ]
@@ -529,6 +553,10 @@ def build() -> None:
     style(ws["B7"], value='=_xlfn.MAXIFS(tblGic[to],tblGic[basis],"known")', number_format=DATE, **CALC)
     for ref in ("B4", "B5"):
         dv = DataValidation(type="list", formula1='"Y,N"', allow_blank=False)
+        dv.add(ref)
+        ws.add_data_validation(dv)
+    for ref, blank_ok in (("B2", False), ("B3", True), ("B6", False)):
+        dv = DataValidation(type="date", operator="greaterThan", formula1="1", allow_blank=blank_ok)
         dv.add(ref)
         ws.add_data_validation(dv)
     style(ws["A9"], value="Summary", **HEAD)
@@ -555,7 +583,7 @@ def build() -> None:
         if "shortfall" in label or "earnings" in label or "estimate" in label:
             cell.number_format = MONEY
     ws["A24"] = "Overall status"
-    style(ws["B24"], value="='Review Checks'!B13", font=Font(bold=True), **CALC)
+    style(ws["B24"], value="='Review Checks'!B16", font=Font(bold=True), **CALC)
     ws.column_dimensions["A"].width = 64
     ws.column_dimensions["B"].width = 18
     ws.protection.sheet = True
@@ -594,6 +622,15 @@ def build() -> None:
          '=IF(C10=0,"",' + offender("(tblLines[Duplicate]=1)") + ")"),
         ("Lines assessed at a nil SG amount (nothing to assess)", '=IF(C11=0,"PASS","NOTE")',
          '=COUNTIF(tblLines[Branch],"NIL")', '=IF(C11=0,"",' + offender('(tblLines[Branch]="NIL")') + ")"),
+        ("As-at, assessment and coverage dates on Summary are dates",
+         f'=IF(AND(ISNUMBER({AS_AT}),OR({ASSESS}="",ISNUMBER({ASSESS})),ISNUMBER({COVERAGE})),"PASS","BLOCKED")',
+         f'={AS_AT}', None),
+        ("No fabricated example line from the shipped sample remains in the register",
+         '=IF(C13=0,"PASS","REVIEW")', "=SUM(tblLines[Sample_row])",
+         '=IF(C13=0,"",' + offender("(tblLines[Sample_row]=1)") + ")"),
+        ("No employee ids differ only by capitalisation (treated as different people, not aligned)",
+         '=IF(C14=0,"PASS","NOTE")', "=SUM(tblLines[Case_variant])",
+         '=IF(C14=0,"",' + offender("(tblLines[Case_variant]=1)") + ")"),
     ]
     for r, (label, result, detail, example) in enumerate(checks, 2):
         ws.cell(row=r, column=1, value=label)
@@ -603,11 +640,11 @@ def build() -> None:
         if example:
             cell.value = ArrayFormula(cell.coordinate, example)
     last = len(checks) + 1
-    style(ws["A13"], value="Overall status", font=Font(bold=True))
-    style(ws["B13"], value=(f'=IF(COUNTIF(B2:B{last},"BLOCKED")>0,"BLOCKED",'
+    style(ws["A16"], value="Overall status", font=Font(bold=True))
+    style(ws["B16"], value=(f'=IF(COUNTIF(B2:B{last},"BLOCKED")>0,"BLOCKED",'
                             f'IF(COUNTIF(B2:B{last},"REVIEW")>0,"REVIEW","PASS"))'),
           font=Font(bold=True), **CALC)
-    style(ws["A15"], value="Assumptions the engine prints with every run", **HEAD)
+    style(ws["A18"], value="Assumptions the engine prints with every run", **HEAD)
     caveats = [
         "The statutory test is receipt by the fund with enough information to allocate it "
         "(SGAA s 18C(1)(c)). A remittance date is operational evidence only; clearing-house "
@@ -628,10 +665,10 @@ def build() -> None:
         "penalty, interest after assessment, exceptional-circumstances determinations, fund deed "
         "and award obligations, and paydays before 1 July 2026.",
     ]
-    for r, text in enumerate(caveats, 16):
+    for r, text in enumerate(caveats, 19):
         ws.cell(row=r, column=1, value=text).alignment = Alignment(wrap_text=True)
     fills = {"BLOCKED": "F8D7DA", "REVIEW": "FFF3CD", "PASS": "D4EDDA"}
-    for target, ref in ((ws, "B2:B13"), (wb["Start Here"], "A11"), (wb["Summary"], "B24")):
+    for target, ref in ((ws, "B2:B16"), (wb["Start Here"], "A11"), (wb["Summary"], "B24")):
         for word, colour in fills.items():
             target.conditional_formatting.add(
                 ref, CellIsRule(operator="equal", formula=[f'"{word}"'],
@@ -686,7 +723,7 @@ try {
   $xl.CalculateFullRebuild()
   $tries = 0
   while ($xl.CalculationState -ne 0 -and $tries -lt 600) { Start-Sleep -Milliseconds 100; $tries++ }
-  $status = $wb.Worksheets.Item('Review Checks').Range('B13').Text
+  $status = $wb.Worksheets.Item('Review Checks').Range('B16').Text
   $wb.Save()
   $wb.Close($false)
   Write-Output ('overall=' + $status)

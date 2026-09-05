@@ -19,11 +19,16 @@ and the assumptions the checker prints with every run sit on Review Checks.
    `defined_benefit`. Dates are real Excel dates, amounts are dollars, the
    yes/no columns take `yes`, `no` or blank. The column meanings are in the
    package README. Rows pasted below the example pick up the calculated columns.
+   Delete any example rows you did not overwrite: Review Checks flags a
+   fabricated example line that is still in the register, because it would
+   otherwise count in the totals.
 2. **Summary.** Set the as-at date (`--as-at`), an assessment date if the ATO
    has assessed (`--assessment-date`), and the two confirmations the checker
    asks for: LCR 2026/1 transition allocation
    (`--confirm-transition-allocation`) and remittance-only review
-   (`--confirm-remittance-only`). Do not tick a confirmation mechanically; the
+   (`--confirm-remittance-only`). Both ship as `N`, as the CLI defaults them,
+   so the shipped sample is BLOCKED at the transition check exactly as the CLI
+   stops on it without the flag. Do not tick a confirmation mechanically; the
    package README says when each is appropriate.
 3. **Register, calculated columns.** The pathway and final deadline (usual 7
    business days, 20 for a first contribution to a fund, the next standard
