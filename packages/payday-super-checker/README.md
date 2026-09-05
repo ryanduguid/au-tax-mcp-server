@@ -1,8 +1,8 @@
-# payday-super-checker
+# Payday Super timing
 
 ```
 +----------------------------------------------------------------------+
-|                         payday-super-checker                         |
+|                         Payday Super timing                          |
 +----------------------------------------------------------------------+
 |              SG charge and due dates since 1 July 2026               |
 +----------------------------------+-----------------------------------+
@@ -17,6 +17,8 @@
 ![payday-super-checker](assets/banner.svg)
 
 [![tests](https://github.com/ryanduguid/australian-accounting/actions/workflows/ci-payday-super-checker.yml/badge.svg)](https://github.com/ryanduguid/australian-accounting/actions/workflows/ci-payday-super-checker.yml) [![PyPI](https://img.shields.io/pypi/v/payday-super-checker.svg?color=5C2D91&labelColor=04001F)](https://pypi.org/project/payday-super-checker/) [![License: MIT](https://img.shields.io/badge/License-MIT-4F485E.svg?labelColor=04001F)](LICENSE) [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-5C2D91.svg?logo=python&logoColor=white&labelColor=04001F)](https://www.python.org/downloads/)
+
+Distribution `payday-super-checker`, import package `paydaysuper`, command `payday-super-check`.
 
 **Experimental review aid. Not a compliance determination.** Check Australian
 super contributions against the payday-super deadlines and produce an
@@ -46,6 +48,16 @@ The card comes from the fabricated sample and links to the complete console tran
 ```bash
 python tools/render_quick_proof.py --check
 ```
+
+## Excel workbook
+
+No Python? [`workbooks/payday-super-checker.xlsx`](workbooks/payday-super-checker.xlsx)
+runs the same review in ordinary worksheet formulas: paste the canonical
+contributions register, set the as-at date, and read the deadline, verdict,
+shortfall, notional earnings and SG charge estimate range per line, with the
+checker's UNKNOWN outcomes preserved. It is macro-free, needs desktop Excel for
+Microsoft 365 or Excel 2024, and is held to this engine's answer by
+`tests/test_workbook.py`. See [workbooks/README.md](workbooks/README.md).
 
 ## Install
 
