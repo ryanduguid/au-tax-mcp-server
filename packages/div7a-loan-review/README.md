@@ -1,8 +1,8 @@
-# div7a-loan-review
+# Division 7A loan review
 
 ```
 +----------------------------------------------------------------------+
-|                          div7a-loan-review                           |
+|                       Division 7A loan review                        |
 +----------------------------------------------------------------------+
 |          ITAA 1936 Div 7A: s 109N terms, s 109E repayments           |
 +----------------------------------+-----------------------------------+
@@ -20,6 +20,8 @@
 [![PyPI](https://img.shields.io/pypi/v/div7a-loan-review.svg?color=5C2D91&labelColor=04001F)](https://pypi.org/project/div7a-loan-review/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-4F485E.svg?labelColor=04001F)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-5C2D91.svg?logo=python&logoColor=white&labelColor=04001F)](https://www.python.org/downloads/)
+
+Distribution `div7a-loan-review`, import package `div7aloan`, command `div7a-loan-review`.
 
 **Experimental review aid. Not a Division 7A determination.**
 
@@ -102,6 +104,16 @@ Division 7A dividends at the company's distributable surplus, and s 109E(1)(d)
 removes the dividend entirely where s 109Q applies. Neither is modelled here,
 and neither is s 109RB. This repository does not write "the ATO will assess
 $X", and neither should anything built on it.
+
+## Excel workbook
+
+No Python? [`workbooks/div7a-loan-review.xlsx`](workbooks/div7a-loan-review.xlsx)
+runs the same review in ordinary worksheet formulas: paste the register, pick
+the year of income, read each s 109N(1) limb, the gate verdict, the s 109E(6)
+repayment and the shortfall per loan. REFUSED and UNKNOWN stay REFUSED and
+UNKNOWN. It is macro-free, needs desktop Excel for Microsoft 365 or Excel
+2024, and is held to this engine's answer by `tests/test_workbook.py`. See
+[workbooks/README.md](workbooks/README.md).
 
 ## Install
 
