@@ -24,7 +24,7 @@
 
 [30-second proof](#30-second-proof) · [Install](#install) · [Client setup](#client-integration) · [Tool reference](#tools) · [Release notes](https://github.com/ryanduguid/australian-accounting/blob/main/apps/aus-accounting-mcp/RELEASE_NOTES.md)
 
-**Aus Accounting MCP** is a local MCP facade over reviewed Australian computational accounting engines. Compatible with Claude Desktop, Claude Code, Cursor, Codex and Antigravity.
+**Aus Accounting MCP** provides Australian accounting review tools for ATO benchmarks, Payday Super timing and limited Division 7A loan reviews, plus synthetic CTR/BAS fixtures for integration tests. Compatible with Claude Desktop, Claude Code, Cursor, Codex and Antigravity.
 
 Payday Super and Division 7A are experimental reviews, not compliance or tax determinations. SBR payloads are synthetic fixtures.
 
@@ -45,7 +45,7 @@ The Division 7A adapter covers reviewed s 109N loan terms and benchmark rates pl
 
 ![Static terminal proof of synthetic BAS output and Division 7A loan review](https://raw.githubusercontent.com/ryanduguid/australian-accounting/main/apps/aus-accounting-mcp/docs/quick-proof.webp)
 
-**Release proof:** from a repository checkout, run the fabricated
+**Release proof:** from `apps/aus-accounting-mcp/` in a repository checkout, run the fabricated
 demonstration without starting the stdio server:
 
 ```bash
@@ -97,7 +97,13 @@ published provenance is the [v0.1.7 release record](https://github.com/ryandugui
 uvx aus-accounting-mcp
 ```
 
-Clone and `pip install -e .` still works when you want a local editable tree.
+For a local editable tree, clone the repository, change into
+`apps/aus-accounting-mcp/`, then run `pip install -e .`. The repository root is not
+an installable package.
+
+The executable waits for a client over stdio; it does not open a web page or start
+an HTTP service. No API key is required. Installation downloads packages; tool
+calls use bundled data locally without writing records or contacting services.
 
 ## Client integration
 
@@ -151,6 +157,13 @@ codex mcp add aus-accounting -- uvx aus-accounting-mcp
 | `review_div7a_loan` | Review s 109N terms and s 109E minimum yearly repayment for one operator-supplied amalgamated loan | div7a-loan-review |
 | `refuse_div7a` | Refuse Division 7A matters outside the reviewed engine scope | MCP policy |
 | `generate_synthetic_sbr_fixture` | Synthetic CTR/BAS for agent tests (`synthetic: true`) | local fixture |
+
+MCP initialization supplies server-wide instructions for choosing tools and handling
+missing facts. Every tool publishes an output schema describing its returned fields,
+including verdicts, decimal strings, warnings and source information. `ok: true`
+means the tool ran, not that the review passed; retain `UNKNOWN`, `REFUSED`,
+`not_supplied` and `null` results when presenting findings. Engine audit fields are
+preserved, and clients receive the same payload in structured content and JSON text.
 
 The Division 7A tools default to `response_detail="summary"`, retaining outcomes,
 amounts, caveats, versions and a verification link while reducing tool-result size.
