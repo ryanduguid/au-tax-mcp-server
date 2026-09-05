@@ -1,23 +1,59 @@
 """MCP result contracts; calculations and provenance remain owned by the engines.
 
-Typed dictionaries preserve the existing JSON objects. Optional keys describe
-summary/full and CTR/BAS variants without inserting defaults. Extra fields are
+Typed dictionaries preserve existing JSON objects. Separate variants require
+summary/full and CTR/BAS fields without inserting defaults. Extra fields are
 retained so engine audit information is never discarded during serialization.
 """
 
+from datetime import date
 from typing import Annotated, Any, Literal
 
-from pydantic import ConfigDict, Field, with_config
-from typing_extensions import NotRequired, TypedDict
+from pydantic import (
+    AfterValidator,
+    ConfigDict,
+    Field,
+    RootModel,
+    TypeAdapter,
+    model_validator,
+    with_config,
+)
+from typing_extensions import TypedDict
 
 
-DecimalText = Annotated[str, Field(description="Engine decimal string; retain its precision.")]
+DecimalText = Annotated[
+    str,
+    Field(
+        description="Finite engine decimal string, including exponent notation; retain its precision.",
+        pattern=r"^[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$",
+    ),
+]
 MaybeDecimal = Annotated[
-    str | None,
+    DecimalText | None,
     Field(description="Engine decimal string, or null when unavailable; null is not zero."),
 ]
-DateText = Annotated[str, Field(description="Date in YYYY-MM-DD form.")]
-YearText = Annotated[str, Field(description="Income or dataset year in YYYY-YY form.")]
+
+
+def _iso_date(value: str) -> str:
+    date.fromisoformat(value)
+    return value
+
+
+DateText = Annotated[
+    str,
+    Field(
+        description="Date in YYYY-MM-DD form.",
+        pattern=r"^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])$",
+        json_schema_extra={"format": "date"},
+    ),
+    AfterValidator(_iso_date),
+]
+YearText = Annotated[
+    str,
+    Field(
+        description="Income or dataset year in YYYY-YY form.",
+        pattern=r"^[0-9]{4}-[0-9]{2}$",
+    ),
+]
 Caveats = Annotated[
     list[str], Field(description="Limitations to retain when presenting the result.")
 ]
@@ -128,13 +164,14 @@ class PaydayAssessment(ResultObject):
     qe_day: DateText
     sg_amount: DecimalText
     remitted: Annotated[
-        str | None, Field(description="Remittance date, YYYY-MM-DD, or null if unknown.")
+        DateText | None, Field(description="Remittance date, YYYY-MM-DD, or null if unknown.")
     ]
     received: Annotated[
-        str | None, Field(description="Fund-receipt date, YYYY-MM-DD, or null if unknown.")
+        DateText | None, Field(description="Fund-receipt date, YYYY-MM-DD, or null if unknown.")
     ]
     due: Annotated[
-        str | None, Field(description="Engine deadline, YYYY-MM-DD, or null when not applicable.")
+        DateText | None,
+        Field(description="Engine deadline, YYYY-MM-DD, or null when not applicable."),
     ]
     pathway: Annotated[str, Field(description="Deadline pathway chosen by the engine.")]
     verdict: Annotated[
@@ -166,7 +203,7 @@ class PaydayAssessment(ResultObject):
 
 class PaydayReview(EngineResult):
     law_content_date: DateText
-    as_at: Annotated[str, Field(description="Explicit operator assessment date, YYYY-MM-DD.")]
+    as_at: Annotated[DateText, Field(description="Explicit operator assessment date, YYYY-MM-DD.")]
     disclaimer: Annotated[
         str, Field(description="Experimental review and fund-receipt limitations.")
     ]
@@ -189,33 +226,56 @@ class Div7aResult(EngineResult):
     disclaimer: Annotated[
         str, Field(description="Experimental scope and human-review requirements.")
     ]
-    response_detail: NotRequired[
-        Annotated[
-            Literal["summary"],
-            Field(description="Present for summary responses; omitted for full responses."),
-        ]
-    ]
-    source: NotRequired[
-        Annotated[
-            VerificationSource, Field(description="Concise verification source; summary only.")
-        ]
-    ]
 
 
-class Div7aRate(Div7aResult):
+class SummaryDetails(ResultObject):
+    response_detail: Annotated[Literal["summary"], Field(description="Summary response marker.")]
+    source: Annotated[VerificationSource, Field(description="Concise verification source.")]
+
+
+class RateFields(Div7aResult):
     year_of_income: YearText
     verdict: Annotated[
         Literal["KNOWN", "UNKNOWN"], Field(description="Whether the engine has a reviewed rate.")
     ]
     benchmark_rate: Annotated[
-        str | None, Field(description="Decimal fraction, e.g. 0.08 means 8%; null if UNKNOWN.")
+        DecimalText | None,
+        Field(description="Decimal fraction, e.g. 0.08 means 8%; null if UNKNOWN."),
     ]
     reason: Annotated[
         str | None,
         Field(description="Engine explanation when the rate is unavailable; otherwise null."),
     ]
-    provenance: NotRequired[Provenance]
-    statutory_trace: NotRequired[Trace]
+
+
+class RateSummary(RateFields, SummaryDetails):
+    """Concise rate result with source link."""
+
+
+@with_config(
+    ConfigDict(
+        extra="allow",
+        strict=True,
+        json_schema_extra={
+            "not": {"required": ["response_detail"]},
+        },
+    )
+)
+class RateFull(RateFields):
+    provenance: Provenance
+    statutory_trace: Trace
+
+
+class Div7aRate(RootModel[RateSummary | RateFull]):
+    model_config = ConfigDict(json_schema_extra={"type": "object"})
+
+    @model_validator(mode="before")
+    @classmethod
+    def require_summary_source(cls, value: Any) -> Any:
+        if isinstance(value, dict) and "response_detail" in value:
+            # Do not let a malformed summary fall back to the full union branch.
+            TypeAdapter(RateSummary).validate_python(value)
+        return value
 
 
 class Div7aGate(ResultObject):
@@ -225,17 +285,18 @@ class Div7aGate(ResultObject):
     ]
     loan_id: Annotated[str, Field(description="Operator loan reference.")]
     benchmark_year_used: Annotated[
-        str | None, Field(description="Engine benchmark year, YYYY-YY, if known.")
+        YearText | None, Field(description="Engine benchmark year, YYYY-YY, if known.")
     ]
     benchmark_rate: MaybeDecimal
     maximum_term_years_allowed: MaybeDecimal
     reasons: Reasons
     caveats: Caveats
-    benchmark_provenance: NotRequired[Provenance | None]
-    limbs: NotRequired[
-        Annotated[list[dict[str, str]], Field(description="Individual s 109N findings; full only.")]
-    ]
-    statutory_trace: NotRequired[Trace]
+
+
+class GateFull(Div7aGate):
+    benchmark_provenance: Provenance | None
+    limbs: Annotated[list[dict[str, str]], Field(description="Individual s 109N findings.")]
+    statutory_trace: Trace
 
 
 class Div7aRepayment(ResultObject):
@@ -254,12 +315,12 @@ class Div7aRepayment(ResultObject):
     amalgamated_loan_unpaid_at_end_of_previous_year: MaybeDecimal
     remaining_term_years_used: MaybeDecimal
     myr_required: Annotated[
-        str | None, Field(description="Required repayment in AUD; null if not determined.")
+        DecimalText | None, Field(description="Required repayment in AUD; null if not determined.")
     ]
     payments_applied: MaybeDecimal
     shortfall: MaybeDecimal
     experimental_deemed_dividend_exposure: Annotated[
-        str | None,
+        DecimalText | None,
         Field(
             description="Experimental AUD exposure only, not an assessed dividend; null if unknown."
         ),
@@ -267,15 +328,45 @@ class Div7aRepayment(ResultObject):
     rounding: Annotated[str, Field(description="Rounding rule reported by the engine.")]
     reasons: Reasons
     caveats: Caveats
-    benchmark_provenance: NotRequired[Provenance | None]
-    statutory_trace: NotRequired[Trace]
 
 
-class Div7aReview(Div7aResult):
+class RepaymentFull(Div7aRepayment):
+    benchmark_provenance: Provenance | None
+    statutory_trace: Trace
+
+
+class ReviewSummary(Div7aResult, SummaryDetails):
     gate: Annotated[Div7aGate, Field(description="s 109N gate outcome and reasons.")]
     minimum_yearly_repayment: Annotated[
-        Div7aRepayment, Field(description="s 109E review or explicit refusal.")
+        Div7aRepayment, Field(description="s 109E review or refusal.")
     ]
+
+
+@with_config(
+    ConfigDict(
+        extra="allow",
+        strict=True,
+        json_schema_extra={
+            "not": {"required": ["response_detail"]},
+        },
+    )
+)
+class ReviewFull(Div7aResult):
+    gate: Annotated[GateFull, Field(description="s 109N gate with full audit fields.")]
+    minimum_yearly_repayment: Annotated[
+        RepaymentFull, Field(description="s 109E review with full audit fields.")
+    ]
+
+
+class Div7aReview(RootModel[ReviewSummary | ReviewFull]):
+    model_config = ConfigDict(json_schema_extra={"type": "object"})
+
+    @model_validator(mode="before")
+    @classmethod
+    def require_summary_source(cls, value: Any) -> Any:
+        if isinstance(value, dict) and "response_detail" in value:
+            TypeAdapter(ReviewSummary).validate_python(value)
+        return value
 
 
 class ScopeRefusal(ResultObject):
@@ -293,33 +384,68 @@ class ScopeRefusal(ResultObject):
     reason: Annotated[str, Field(description="Supported alternatives and excluded matters.")]
 
 
-class SyntheticFixture(ResultObject):
+class FixtureFields(ResultObject):
     synthetic: Annotated[
         Literal[True], Field(description="Fabricated test data; never real client results.")
     ]
     not_a_lodgment: Annotated[Literal[True], Field(description="Never a lodgment-ready payload.")]
-    form_type: Annotated[
-        Literal["CTR_AU_2025", "BAS_AU_ACTIVITY_STATEMENT"],
-        Field(
-            description="Fixture variant; CTR carries income/reconciliation, BAS carries GST/PAYG/summary."
-        ),
+    entity: Annotated[dict[str, Any], Field(description="Fabricated identity and period fields.")]
+
+
+CTR_SECTIONS = ("income_statement", "reconciliation")
+BAS_SECTIONS = ("gst_labels", "payg_withholding_labels", "summary")
+
+
+@with_config(
+    ConfigDict(
+        extra="allow",
+        strict=True,
+        json_schema_extra={
+            "not": {"anyOf": [{"required": [name]} for name in BAS_SECTIONS]},
+        },
+    )
+)
+class CtrFixture(FixtureFields):
+    form_type: Literal["CTR_AU_2025"]
+    income_statement: Annotated[
+        dict[str, DecimalText], Field(description="Synthetic CTR income figures.")
     ]
-    entity: Annotated[
-        dict[str, Any],
-        Field(description="Fabricated identity and period fields for the chosen variant."),
+    reconciliation: Annotated[
+        dict[str, DecimalText], Field(description="Synthetic CTR reconciliation.")
     ]
-    income_statement: NotRequired[
-        Annotated[dict[str, DecimalText], Field(description="Synthetic CTR income figures only.")]
+
+
+@with_config(
+    ConfigDict(
+        extra="allow",
+        strict=True,
+        json_schema_extra={
+            "not": {"anyOf": [{"required": [name]} for name in CTR_SECTIONS]},
+        },
+    )
+)
+class BasFixture(FixtureFields):
+    form_type: Literal["BAS_AU_ACTIVITY_STATEMENT"]
+    gst_labels: Annotated[dict[str, DecimalText], Field(description="Synthetic BAS GST labels.")]
+    payg_withholding_labels: Annotated[
+        dict[str, DecimalText], Field(description="Synthetic BAS PAYG labels.")
     ]
-    reconciliation: NotRequired[
-        Annotated[dict[str, DecimalText], Field(description="Synthetic CTR reconciliation only.")]
-    ]
-    gst_labels: NotRequired[
-        Annotated[dict[str, DecimalText], Field(description="Synthetic BAS GST labels only.")]
-    ]
-    payg_withholding_labels: NotRequired[
-        Annotated[dict[str, DecimalText], Field(description="Synthetic BAS PAYG labels only.")]
-    ]
-    summary: NotRequired[
-        Annotated[dict[str, DecimalText], Field(description="Synthetic BAS total only.")]
-    ]
+    summary: Annotated[dict[str, DecimalText], Field(description="Synthetic BAS total.")]
+
+
+class SyntheticFixture(RootModel[CtrFixture | BasFixture]):
+    model_config = ConfigDict(json_schema_extra={"type": "object"})
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_mixed_forms(cls, value: Any) -> Any:
+        if isinstance(value, dict):
+            form = value.get("form_type")
+            forbidden = (
+                BAS_SECTIONS
+                if form == "CTR_AU_2025"
+                else (CTR_SECTIONS if form == "BAS_AU_ACTIVITY_STATEMENT" else ())
+            )
+            if any(name in value for name in forbidden):
+                raise ValueError("Fixture contains sections from the other form")
+        return value
